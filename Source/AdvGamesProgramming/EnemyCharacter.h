@@ -5,6 +5,8 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "Perception/AIPerceptionTypes.h"
+#include "Components/SkeletalMeshComponent.h"
+#include "TimerManager.h"
 #include "EnemyCharacter.generated.h"
 
 UENUM()
@@ -12,7 +14,10 @@ enum class AgentState : uint8
 {
 	PATROL,
 	ENGAGE,
-	EVADE
+	EVADE,
+	CHASE,
+	CHECK,
+	HEAL
 };
 
 UCLASS()
@@ -29,7 +34,11 @@ protected:
 	virtual void BeginPlay() override;
 
 public:	
+	FTimerHandle SpinTimerHandle;
+	bool DoOnce;
 
+	UPROPERTY(VisibleAnywhere, Category = "AI")
+	bool bCanHeal;
 	TArray <class ANavigationNode* > Path;
 	ANavigationNode* CurrentNode;
 	class AAIManager* Manager;
@@ -45,6 +54,10 @@ public:
 	class UAIPerceptionComponent* PerceptionComponent;
 	AActor* DetectedActor;
 	bool bCanSeeActor;
+	FVector PlayerLocation;
+	FVector LastLocation;
+	float SprintMultiplier;
+
 
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
@@ -55,15 +68,25 @@ public:
 	void AgentPatrol();
 	void AgentEngage();
 	void AgentEvade();
+	void AgentChase();
+	void AgentCheck();
+	void AgentHeal();
 
-	UFUNCTION()
+	UFUNCTION(blueprintCallable)
 	void SensePlayer(AActor* ActorSensed, FAIStimulus Stimulus);
 
 	UFUNCTION(BlueprintImplementableEvent)
 	void Fire(FVector FireDirection);
 
+	UFUNCTION(BlueprintImplementableEvent)
+	void BlueprintReload();
+
+	void Reload();
+
+
+	void SetCanHealToTrue();
+
 private:
 
 	void MoveAlongPath();
-
 };

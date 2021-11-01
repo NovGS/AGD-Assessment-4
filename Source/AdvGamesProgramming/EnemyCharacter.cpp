@@ -1,3 +1,4 @@
+
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
@@ -6,6 +7,7 @@
 #include "NavigationNode.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Perception/AIPerceptionComponent.h"
+#include "Math/UnrealMathUtility.h"
 #include "HealthComponent.h"
 
 // Sets default values
@@ -16,6 +18,11 @@ AEnemyCharacter::AEnemyCharacter()
 
 	CurrentAgentState = AgentState::PATROL;
 	PathfindingNodeAccuracy = 100.0f;
+	SprintMultiplier = 1.5f;
+
+	DoOnce = false;
+	bCanHeal = false;
+
 }
 
 // Called when the game starts or when spawned
@@ -36,6 +43,8 @@ void AEnemyCharacter::BeginPlay()
 	DetectedActor = nullptr;
 	bCanSeeActor = false;
 
+	USkeletalMeshComponent* mesh = GetMesh();
+
 }
 
 // Called every frame
@@ -43,48 +52,122 @@ void AEnemyCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	if (CurrentAgentState == AgentState::PATROL)
+	if (HealthComponent->CurrentHealth > 0)
 	{
-		AgentPatrol();
-		if (bCanSeeActor && HealthComponent->HealthPercentageRemaining() >= 40.0f)
+		if (CurrentAgentState == AgentState::PATROL)
 		{
-			CurrentAgentState = AgentState::ENGAGE;
-			Path.Empty();
-		} 
-		else if (bCanSeeActor && HealthComponent->HealthPercentageRemaining() < 40.0f)
-		{
-			CurrentAgentState = AgentState::EVADE;
-			Path.Empty();
+			AgentPatrol();
+			if (bCanSeeActor && HealthComponent->HealthPercentageRemaining() >= 40.0f)
+			{
+				CurrentAgentState = AgentState::ENGAGE;
+				Path.Empty();
+			}
+			else if (bCanSeeActor && HealthComponent->HealthPercentageRemaining() < 40.0f)
+			{
+				CurrentAgentState = AgentState::EVADE;
+				Path.Empty();
+			}
 		}
-	}
-	else if (CurrentAgentState == AgentState::ENGAGE)
-	{
-		AgentEngage();
-		if (!bCanSeeActor)
+		else if (CurrentAgentState == AgentState::ENGAGE)
 		{
-			CurrentAgentState = AgentState::PATROL;
+			AgentEngage();
+			if (!bCanSeeActor)
+			{
+				CurrentAgentState = AgentState::CHASE;
+				Path.Empty();
+			}
+			else if (bCanSeeActor && HealthComponent->HealthPercentageRemaining() < 40.0f)
+			{
+				CurrentAgentState = AgentState::EVADE;
+				Path.Empty();
+			}
 		}
-		else if (bCanSeeActor && HealthComponent->HealthPercentageRemaining() < 40.0f)
+
+		else if (CurrentAgentState == AgentState::EVADE)
 		{
-			CurrentAgentState = AgentState::EVADE;
-			Path.Empty();
+			AgentEvade();
+
+			if (bCanSeeActor && HealthComponent->HealthPercentageRemaining() >= 40.0f)
+			{
+
+				CurrentAgentState = AgentState::ENGAGE;
+				Path.Empty();
+			}
+
+			else if (!bCanSeeActor && HealthComponent->HealthPercentageRemaining() < 40.0f)
+			{
+				DoOnce = true;
+				CurrentAgentState = AgentState::CHECK;
+			}
 		}
-	}
-	else if (CurrentAgentState == AgentState::EVADE)
-	{
-		AgentEvade();
-		if (!bCanSeeActor)
+
+		else if (CurrentAgentState == AgentState::CHASE)
 		{
-			CurrentAgentState = AgentState::PATROL;
+			AgentChase();
+			if (bCanSeeActor)
+			{
+				CurrentAgentState = AgentState::ENGAGE;
+				Path.Empty();
+			}
+
+		
+			else if (!bCanSeeActor)
+			{
+				CurrentAgentState = AgentState::PATROL;
+			}
+	
+
+			else if (bCanSeeActor && HealthComponent->HealthPercentageRemaining() < 40.0f)
+			{
+				CurrentAgentState = AgentState::EVADE;
+				Path.Empty();
+			}
+			
 		}
-		else if (bCanSeeActor && HealthComponent->HealthPercentageRemaining() >= 40.0f)
+
+		else if (CurrentAgentState == AgentState::CHECK)
 		{
-			CurrentAgentState = AgentState::ENGAGE;
-			Path.Empty();
+			AgentCheck();
+
+			if (bCanSeeActor && HealthComponent->HealthPercentageRemaining() < 40.0f)
+			{
+				CurrentAgentState = AgentState::EVADE;
+				Path.Empty();
+			}
+
+			if (!bCanSeeActor && HealthComponent->HealthPercentageRemaining() < 40.0f && bCanHeal)
+			{
+				CurrentAgentState = AgentState::HEAL;
+			}	
 		}
+
+		else if (CurrentAgentState == AgentState::HEAL)
+		{
+			AgentHeal();
+
+			if (HealthComponent->HealthPercentageRemaining() < 40.0f && bCanSeeActor)
+			{
+				bCanHeal = false;
+				CurrentAgentState = AgentState::EVADE;
+			}
+
+			else if (HealthComponent->HealthPercentageRemaining() >= 40.0f && bCanSeeActor)
+			{
+				bCanHeal = false;
+				CurrentAgentState = AgentState::ENGAGE;
+			}
+
+			else if (HealthComponent->HealthPercentageRemaining() >= 40.0f && !bCanSeeActor)
+			{
+				bCanHeal = false;
+				CurrentAgentState = AgentState::PATROL;
+			}
+		}
+
+		MoveAlongPath();
+		//Reload();
 	}
 
-	MoveAlongPath();
 }
 
 // Called to bind functionality to input
@@ -121,11 +204,20 @@ void AEnemyCharacter::AgentEngage()
 
 void AEnemyCharacter::AgentEvade()
 {
+	//Make the AI run faster on Evade state, it looks like the AI is trying to run away from the danger to avoid death.
+	//Which i think make it more realistic.
 	if (bCanSeeActor && DetectedActor)
 	{
-		FVector FireDirection = DetectedActor->GetActorLocation() - GetActorLocation();
-		Fire(FireDirection);
+		GetCharacterMovement()->MaxWalkSpeed *= SprintMultiplier;
 	}
+
+	//The movement speed will back to normal when the AI can't see the player
+	if (!bCanSeeActor)
+	{
+		GetCharacterMovement()->MaxWalkSpeed /= SprintMultiplier;
+	}
+
+
 	if (Path.Num() == 0 && DetectedActor)
 	{
 		ANavigationNode* FurthestNode = Manager->FindFurthestNode(DetectedActor->GetActorLocation());
@@ -133,12 +225,55 @@ void AEnemyCharacter::AgentEvade()
 	}
 }
 
+void AEnemyCharacter::AgentChase()
+{
+    //Once the AI cant see the player, it will record the player's last seen location and chase to that location.
+	
+		ANavigationNode* NearestNode = Manager->FindNearestNode(PlayerLocation);
+		Path = Manager->GeneratePath(CurrentNode, NearestNode);
+
+}
+
+void AEnemyCharacter::AgentCheck()
+{
+
+		FRotator Current = GetActorRotation();
+
+		//Check to see if the location is safe. if it is not safe the AI will go back to Evade state. if it is safe, it will go to heal state
+		float value = 180.0f;
+
+		FRotator Target = Current;
+		Target.Yaw += value;
+		SetActorRotation(FMath::RInterpTo(Current, Target, GetWorld()->GetDeltaSeconds(), 2.0f));
+
+		if (DoOnce)
+		{
+			DoOnce = false;
+			GetWorldTimerManager().SetTimer(SpinTimerHandle, this, &AEnemyCharacter::SetCanHealToTrue, 1.0f, false, 3.0f);
+		}
+		
+		if (bCanSeeActor)
+		{
+			GetWorldTimerManager().ClearTimer(SpinTimerHandle);
+		}
+
+}
+
+void AEnemyCharacter::AgentHeal()
+{
+	HealthComponent->CurrentHealth += GetWorld()->GetDeltaSeconds() * 2;
+	GetWorldTimerManager().ClearTimer(SpinTimerHandle);
+}
+
+
+
 void AEnemyCharacter::SensePlayer(AActor* ActorSensed, FAIStimulus Stimulus)
 {
 	if (Stimulus.WasSuccessfullySensed())
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Player Detected"))
 		DetectedActor = ActorSensed;
+		PlayerLocation = ActorSensed->GetActorLocation();
 		bCanSeeActor = true;
 	}
 	else
@@ -147,6 +282,18 @@ void AEnemyCharacter::SensePlayer(AActor* ActorSensed, FAIStimulus Stimulus)
 		bCanSeeActor = false;
 	}
 }
+
+void AEnemyCharacter::Reload()
+{
+	BlueprintReload();
+}
+
+void AEnemyCharacter::SetCanHealToTrue()
+{
+	bCanHeal = true;
+}
+
+
 
 void AEnemyCharacter::MoveAlongPath()
 {
@@ -160,4 +307,6 @@ void AEnemyCharacter::MoveAlongPath()
 		AddMovementInput(CurrentNode->GetActorLocation() - GetActorLocation());
 	}
 }
+
+
 
