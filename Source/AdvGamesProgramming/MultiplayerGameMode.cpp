@@ -16,18 +16,27 @@ void AMultiplayerGameMode::InitGame(const FString& MapName, const FString& Optio
 {
 	Super::InitGame(MapName, Options, ErrorMessages);
 
-	for (TActorIterator<AProcedurallyGeneratedMap> It(GetWorld()); It; ++It)
+	for (TActorIterator<AMapGeneration> It(GetWorld()); It; ++It)
 	{
 		ProceduralMap = *It;
 	}
+	
+	/*for (TActorIterator<AProcedurallyGeneratedMap> It(GetWorld()); It; ++It)
+	{
+		ProceduralMap = *It;
+	}*/
 
 	// Log a warning if the procedural map does not exist.
 	if (!ProceduralMap)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("No Procedural Map found in the level"))
 	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Procedural Map found"))
+	}
 
-	PickupManager = GetWorld()->SpawnActor<APickupManager>();
+	/*PickupManager = GetWorld()->SpawnActor<APickupManager>();
 	if (!PickupManager)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Unable to spawn the APickupManager"))
@@ -36,7 +45,7 @@ void AMultiplayerGameMode::InitGame(const FString& MapName, const FString& Optio
 	if (ProceduralMap && PickupManager)
 	{
 		PickupManager->Init(ProceduralMap->Vertices, WeaponPickupClass, WEAPON_PICKUP_SPAWN_INTERVAL);
-	}
+	}*/
 
 }
 

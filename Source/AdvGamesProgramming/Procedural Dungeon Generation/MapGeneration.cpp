@@ -3,6 +3,8 @@
 
 #include "MapGeneration.h"
 #include "Engine/World.h"
+#include "../NavigationNode.h"
+#include "../EnemyCharacter.h"
 
 // Sets default values
 AMapGeneration::AMapGeneration()
@@ -30,12 +32,30 @@ AMapGeneration::AMapGeneration()
 void AMapGeneration::BeginPlay()
 {
 	Super::BeginPlay();
-	RoomNum = FMath::RandRange(RoomNumMin, RoomNumMax);
-	InvalidZValue = FirstRootLocation.Z - 1;
-	
-	GenerateLevel();
 }
 
+void AMapGeneration::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+
+	if (bRegenerateMap)
+	{
+		RoomNum = FMath::RandRange(RoomNumMin, RoomNumMax);
+		InvalidZValue = FirstRootLocation.Z - 1;
+
+		GenerateLevel();
+		GenerateNodes();
+		ConnectNodes();
+		SpawnTeams();
+
+		bRegenerateMap = false;
+	}
+}
+
+bool AMapGeneration::ShouldTickIfViewportsOnly() const
+{
+	return true;
+}
 
 void AMapGeneration::GenerateLevel()
 {
@@ -788,5 +808,231 @@ void AMapGeneration::AddRoomToRooms(Room RoomToAdd, int32 RoomIndex)
 		ConnectedTiles.Add(*It, RoomIndex);
 	}
 }
+
+void AMapGeneration::GenerateNodes()
+{
+	for (auto It = Rooms.CreateIterator(); It; ++It)
+	{
+		for (int X = 0; X < It->RoomSize.X; X++)
+		{
+			for (int Y = 0; Y < It->RoomSize.Y; Y++)
+			{
+				ANavigationNode* NewNode = GetWorld()->SpawnActor<ANavigationNode>(FVector(X + It->CornerTiles[0].X, Y + It->CornerTiles[0].Y, It->CornerTiles[0].Z) * Scale, FRotator::ZeroRotator, FActorSpawnParameters());
+				It->RoomNodes.Add(NewNode);
+			}
+		}
+	}
+}
+
+void AMapGeneration::ConnectNodes()
+{
+	for (auto It = Rooms.CreateIterator(); It; ++It)
+	{
+		for (int X = 0; X < It->RoomSize.X; X++)
+		{
+			for (int Y = 0; Y < It->RoomSize.Y; Y++)
+			{
+				// Add W connection
+				if (!(Y == 0))
+				{
+					AddConnection(It->RoomNodes[(X * It->RoomSize.Y) + Y], It->RoomNodes[(X * It->RoomSize.Y) + Y - 1]);
+				}
+				else
+				{
+					FVector CurrentTile = FVector(X + It->CornerTiles[0].X, Y + It->CornerTiles[0].Y, It->CornerTiles[0].Z);
+					ERoomConstructionType* Ptr = It->WallTiles.Find(CurrentTile);
+					if (Ptr == nullptr)
+					{
+						if (It->CornerTiles.Contains(CurrentTile))
+						{
+							switch (It->CornerTiles.Find(CurrentTile))
+							{
+							case 0:
+								Ptr = &(*(It->CornerTilesMap.Find(CurrentTile)))[1];
+								break;
+							case 1:
+								Ptr = &(*(It->CornerTilesMap.Find(CurrentTile)))[0];
+								break;
+							}
+						}
+					}
+
+					if (Ptr != nullptr)
+					{
+						if (*Ptr == ERoomConstructionType::DOORWAY)
+						{
+							int32* ConnectedRoomIndex = ConnectedTiles.Find(CurrentTile + FVector::LeftVector);
+							Room* ConnectedRoom = &Rooms[*ConnectedRoomIndex];
+
+							int32 NodeX = (CurrentTile + FVector::LeftVector).X - ConnectedRoom->CornerTiles[0].X;
+							int32 NodeY = (CurrentTile + FVector::LeftVector).Y - ConnectedRoom->CornerTiles[0].Y;
+
+							AddConnection(It->RoomNodes[(X * It->RoomSize.Y) + Y], ConnectedRoom->RoomNodes[(NodeX * ConnectedRoom->RoomSize.Y) + NodeY]);
+						}
+					}
+				}
+
+				// Add NW connection
+				if (!(X == It->RoomSize.X - 1 || Y == 0))
+				{
+					AddConnection(It->RoomNodes[(X * It->RoomSize.Y) + Y], It->RoomNodes[((X + 1) * It->RoomSize.Y) + Y - 1]);
+				}
+				
+				// Add N connection
+				if (!(X == It->RoomSize.X - 1))
+				{
+					AddConnection(It->RoomNodes[(X * It->RoomSize.Y) + Y], It->RoomNodes[((X + 1) * It->RoomSize.Y) + Y]);
+				}
+				else
+				{
+					FVector CurrentTile = FVector(X + It->CornerTiles[0].X, Y + It->CornerTiles[0].Y, It->CornerTiles[0].Z);
+					ERoomConstructionType* Ptr = It->WallTiles.Find(CurrentTile);
+					if (Ptr == nullptr)
+					{
+						if (It->CornerTiles.Contains(CurrentTile))
+						{
+							switch (It->CornerTiles.Find(CurrentTile))
+							{
+							case 1:
+								Ptr = &(*(It->CornerTilesMap.Find(CurrentTile)))[1];
+								break;
+							case 2:
+								Ptr = &(*(It->CornerTilesMap.Find(CurrentTile)))[0];
+								break;
+							}
+						}
+					}
+
+					if (Ptr != nullptr)
+					{
+						if (*Ptr == ERoomConstructionType::DOORWAY)
+						{
+							int32* ConnectedRoomIndex = ConnectedTiles.Find(CurrentTile + FVector::ForwardVector);
+							Room* ConnectedRoom = &Rooms[*ConnectedRoomIndex];
+
+							int32 NodeX = (CurrentTile + FVector::ForwardVector).X - ConnectedRoom->CornerTiles[0].X;
+							int32 NodeY = (CurrentTile + FVector::ForwardVector).Y - ConnectedRoom->CornerTiles[0].Y;
+
+							AddConnection(It->RoomNodes[(X * It->RoomSize.Y) + Y], ConnectedRoom->RoomNodes[(NodeX * ConnectedRoom->RoomSize.Y) + NodeY]);
+						}
+					}
+				}
+
+				// Add NE connection
+				if (!(X == It->RoomSize.X - 1 || Y == It->RoomSize.Y - 1))
+				{
+					AddConnection(It->RoomNodes[(X * It->RoomSize.Y) + Y], It->RoomNodes[((X + 1) * It->RoomSize.Y) + Y + 1]);
+				}
+			}
+		}
+	}
+}
+
+void AMapGeneration::AddConnection(ANavigationNode* FromNode, ANavigationNode* ToNode)
+{
+	FVector DirectionVector = ToNode->GetActorLocation() - FromNode->GetActorLocation();
+	DirectionVector.Normalize();
+
+	if (!FromNode->ConnectedNodes.Contains(ToNode))
+		FromNode->ConnectedNodes.Add(ToNode);
+
+	if (!ToNode->ConnectedNodes.Contains(FromNode))
+		ToNode->ConnectedNodes.Add(FromNode);
+}
+
+void AMapGeneration::SpawnTeams()
+{
+	int32 MinX = 0;
+	int32 MaxX = 0;
+	int32 MinY = 0;
+	int32 MaxY = 0;
+
+	for (auto It = ConnectedTiles.CreateIterator(); It; ++It)
+	{
+		MinX = (It->Key.X < MinX) ? It->Key.X : MinX;
+		MaxX = (It->Key.X > MaxX) ? It->Key.X : MaxX;
+		MinY = (It->Key.Y < MinY) ? It->Key.Y : MinY;
+		MaxY = (It->Key.Y > MaxY) ? It->Key.Y : MaxY;
+	}
+
+	TArray<Room*> RoomsSpawnBlue;
+	TArray<Room*> RoomsSpawnRed;
+
+	UE_LOG(LogTemp, Warning, TEXT("MinX: %d"), MinX);
+	UE_LOG(LogTemp, Warning, TEXT("MaxX: %d"), MaxX);
+	UE_LOG(LogTemp, Warning, TEXT("MinY: %d"), MinY);
+	UE_LOG(LogTemp, Warning, TEXT("MaxY: %d"), MaxY);
+	UE_LOG(LogTemp, Warning, TEXT("I'm not spawning anything tho"));
+
+	if (MaxX - MinX >= MaxY - MinY)
+	{
+		for (auto It = ConnectedTiles.CreateIterator(); It; ++It)
+		{
+			if (It->Key.X == MinX)
+			{
+				if (!RoomsSpawnBlue.Contains(&Rooms[It->Value]))
+				{
+					RoomsSpawnBlue.Add(&Rooms[It->Value]);
+				}
+			}
+
+			if (It->Key.X == MaxX)
+			{
+				if (!RoomsSpawnRed.Contains(&Rooms[It->Value]))
+				{
+					RoomsSpawnRed.Add(&Rooms[It->Value]);
+				}
+			}
+		}	
+	}
+	else
+	{
+		for (auto It = ConnectedTiles.CreateIterator(); It; ++It)
+		{
+			if (It->Key.Y == MinY)
+			{
+				if (!RoomsSpawnBlue.Contains(&Rooms[It->Value]))
+				{
+					RoomsSpawnBlue.Add(&Rooms[It->Value]);
+				}
+			}
+
+			if (It->Key.Y == MaxY)
+			{
+				if (!RoomsSpawnRed.Contains(&Rooms[It->Value]))
+				{
+					RoomsSpawnRed.Add(&Rooms[It->Value]);
+				}
+			}
+		}
+	}
+
+	int32 RandRoomIndexBlue = FMath::RandRange(0, RoomsSpawnBlue.Num() - 1);
+	Room* RoomToSpawnBlue = RoomsSpawnBlue[RandRoomIndexBlue];
+	TArray<int32> NodeIndexesBlue;
+	for (int i = 0; i < RoomToSpawnBlue->RoomNodes.Num(); i++)
+	{
+		NodeIndexesBlue.Add(i);
+	}
+
+	for (int i = 0; i < NodeIndexesBlue.Num(); i++)
+	{
+		int RandIndex = FMath::RandRange(0, NodeIndexesBlue.Num() - 1);
+		int Temp = NodeIndexesBlue[i];
+		NodeIndexesBlue[i] = NodeIndexesBlue[RandIndex];
+		NodeIndexesBlue[RandIndex] = Temp;
+	}
+
+	for (int i = 0; i < 3; i++)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Spawning Blue at: %s"), *RoomToSpawnBlue->RoomNodes[NodeIndexesBlue[i]]->GetActorLocation().ToString());
+		//AEnemyCharacter* SpawnedEnemy = GetWorld()->SpawnActor<AEnemyCharacter>(AgentToSpawn, RoomToSpawnBlue->RoomNodes[NodeIndexesBlue[i]]->GetActorLocation(), RoomToSpawnBlue->RoomNodes[NodeIndexesBlue[i]]->GetActorRotation());
+	}
+
+	int32 RandRoomIndexRed = FMath::RandRange(0, RoomsSpawnRed.Num() - 1);
+
+	
+}
+
 
 

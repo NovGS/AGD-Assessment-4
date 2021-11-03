@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "../NavigationNode.h"
 #include "RoomConstruction.h"
 
 /**
@@ -27,6 +28,8 @@ public:
 
 	// All tiles that are valid doorspaces
 	TArray<FVector> AvailableWallTiles;
+
+	TArray<ANavigationNode*> RoomNodes;
 
 	// Size of the room FVector2D(X, Y)
 	FVector2D RoomSize;

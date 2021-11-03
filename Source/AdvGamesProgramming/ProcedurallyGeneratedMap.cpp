@@ -101,7 +101,7 @@ void AProcedurallyGeneratedMap::GenerateMap()
 
 	if (AIManager)
 	{
-		AIManager->GenerateNodes(Vertices, Width, Height);
+		//AIManager->GenerateNodes(Vertices, Width, Height);
 	}
 }
 

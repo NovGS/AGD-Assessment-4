@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameMode.h"
+#include "Procedural Dungeon Generation/MapGeneration.h"
 #include "MultiplayerGameMode.generated.h"
 
 /**
@@ -17,7 +18,8 @@ class ADVGAMESPROGRAMMING_API AMultiplayerGameMode : public AGameMode
 private:
 	const float WEAPON_PICKUP_SPAWN_INTERVAL = 10.0f;
 
-	class AProcedurallyGeneratedMap* ProceduralMap;
+	//class AProcedurallyGeneratedMap* ProceduralMap;
+	class AMapGeneration* ProceduralMap;
 	class APickupManager* PickupManager;
 
 public:

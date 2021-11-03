@@ -23,6 +23,11 @@ protected:
 	virtual void BeginPlay() override;
 
 public:	
+	
+	// Called every frame
+	virtual void Tick(float DeltaTime) override;
+
+	virtual bool ShouldTickIfViewportsOnly() const override;
 
 	// Size of the rooms
 	UPROPERTY(EditAnywhere, Category = "Room Parameters")
@@ -41,6 +46,9 @@ public:
 		int32 RoomNumMax;
 	
 	int32 RoomNum;
+
+	UPROPERTY(EditAnywhere)
+		bool bRegenerateMap;
 	
 	// The bottom left corner of the initial room spawn
 	UPROPERTY(EditAnywhere, Category = "Level Parameters")
@@ -54,9 +62,15 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Room Construction")
 		TSubclassOf<class ARoomConstruction> Doorway;
 
+	UPROPERTY(VisibleAnywhere, Category = "Navigation Nodes")
+		TArray<class ANavigationNode*> AllNodes;
+
+	UPROPERTY(EditAnywhere, Category = "Agents")
+		TSubclassOf<class AEnemyCharacter> AgentToSpawn;
+
 	// Array of all rooms in the level
 	TArray<Room> Rooms;
-	
+
 	void GenerateLevel();
 
 	Room ChooseValidRoomPlacement();
@@ -95,4 +109,10 @@ private:
 	FVector GenerateRandomizedRootTile(Room* RoomToBranchFrom, FVector2D NewRoomSize, FVector Door, EDirections* DirectionToBuild);
 
 	void AddRoomToRooms(Room RoomToAdd, int32 RoomIndex);
+
+	void GenerateNodes();
+	void ConnectNodes();
+	void AddConnection(ANavigationNode* FromNode, ANavigationNode* ToNode);
+
+	void SpawnTeams();
 };
