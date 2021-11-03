@@ -5,6 +5,13 @@
 #include "GameFramework/Actor.h"
 #include "HealthComponent.h"
 
+//Set Default values
+AHealthPickup::AHealthPickup()
+{
+	TeamId = FGenericTeamId(2);
+}
+
+
 void AHealthPickup::OnPickup(AActor* ActorThatPickedUp)
 {
 	Super::OnPickup(ActorThatPickedUp);
@@ -22,3 +29,9 @@ void AHealthPickup::OnPickup(AActor* ActorThatPickedUp)
 	}
 
 }
+
+FGenericTeamId AHealthPickup::GetGenericTeamId() const
+{
+	return TeamId;
+}
+

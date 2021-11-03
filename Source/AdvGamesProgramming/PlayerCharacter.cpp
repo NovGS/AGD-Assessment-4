@@ -26,6 +26,8 @@ APlayerCharacter::APlayerCharacter()
 
 	SprintMovementSpeed = GetCharacterMovement()->MaxWalkSpeed * SprintMultiplier;
 	NormalMovementSpeed = GetCharacterMovement()->MaxWalkSpeed;
+
+	TeamId = FGenericTeamId(1);
 }
 
 // Called when the game starts or when spawned
@@ -206,4 +208,7 @@ void APlayerCharacter::SetPlayerHUDVisibility_Implementation(bool bHUDVisible)
 	}
 }
 
-
+FGenericTeamId APlayerCharacter::GetGenericTeamId() const
+{
+	return TeamId;
+}

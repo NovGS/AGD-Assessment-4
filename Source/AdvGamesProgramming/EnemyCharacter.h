@@ -5,8 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "Perception/AIPerceptionTypes.h"
-#include "Components/SkeletalMeshComponent.h"
-#include "TimerManager.h"
+#include "GenericTeamAgentInterface.h"
 #include "EnemyCharacter.generated.h"
 
 UENUM()
@@ -16,12 +15,13 @@ enum class AgentState : uint8
 	ENGAGE,
 	EVADE,
 	CHASE,
-	CHECK,
 	HEAL
+	//CHECK,
+	//HEAL
 };
 
 UCLASS()
-class ADVGAMESPROGRAMMING_API AEnemyCharacter : public ACharacter
+class ADVGAMESPROGRAMMING_API AEnemyCharacter : public ACharacter, public IGenericTeamAgentInterface
 {
 	GENERATED_BODY()
 
@@ -34,11 +34,11 @@ protected:
 	virtual void BeginPlay() override;
 
 public:	
-	FTimerHandle SpinTimerHandle;
-	bool DoOnce;
+	//FTimerHandle SpinTimerHandle;
+	//bool bDoOnce;
 
 	UPROPERTY(VisibleAnywhere, Category = "AI")
-	bool bCanHeal;
+	//bool bCanHeal;
 	TArray <class ANavigationNode* > Path;
 	ANavigationNode* CurrentNode;
 	class AAIManager* Manager;
@@ -52,10 +52,13 @@ public:
 	AgentState CurrentAgentState;
 
 	class UAIPerceptionComponent* PerceptionComponent;
-	AActor* DetectedActor;
-	bool bCanSeeActor;
+
+	AActor* DetectedPlayer;
+	bool bCanSeePlayer;
+	AActor* DetectedHealthPickup;
+	bool bCanSeeHealthPickup;
+
 	FVector PlayerLocation;
-	FVector LastLocation;
 	float SprintMultiplier;
 
 
@@ -69,14 +72,19 @@ public:
 	void AgentEngage();
 	void AgentEvade();
 	void AgentChase();
-	void AgentCheck();
 	void AgentHeal();
+	//void AgentCheck();
+	//void AgentHeal();
 
 	UFUNCTION(blueprintCallable)
 	void SensePlayer(AActor* ActorSensed, FAIStimulus Stimulus);
 
+	UFUNCTION(blueprintCallable)
+	void SenseHealthPickUp(AActor* ActorSensed, FAIStimulus Stimulus);
+
 	UFUNCTION(BlueprintImplementableEvent)
 	void Fire(FVector FireDirection);
+
 
 	UFUNCTION(BlueprintImplementableEvent)
 	void BlueprintReload();
@@ -84,9 +92,13 @@ public:
 	void Reload();
 
 
-	void SetCanHealToTrue();
+	//void SetCanHealToTrue();
 
 private:
 
 	void MoveAlongPath();
+
+	//Set up team id for the AI
+	FGenericTeamId TeamId;
+	virtual FGenericTeamId GetGenericTeamId() const override;
 };
