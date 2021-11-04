@@ -5,6 +5,7 @@
 #include "Engine/World.h"
 #include "../NavigationNode.h"
 #include "../EnemyCharacter.h"
+#include "EngineUtils.h"
 
 // Sets default values
 AMapGeneration::AMapGeneration()
@@ -40,6 +41,7 @@ void AMapGeneration::Tick(float DeltaTime)
 
 	if (bRegenerateMap)
 	{
+		ClearMap();
 		RoomNum = FMath::RandRange(RoomNumMin, RoomNumMax);
 		InvalidZValue = FirstRootLocation.Z - 1;
 
@@ -47,6 +49,7 @@ void AMapGeneration::Tick(float DeltaTime)
 		GenerateNodes();
 		ConnectNodes();
 		SpawnTeams();
+		SpawnItems();
 
 		bRegenerateMap = false;
 	}
@@ -940,6 +943,24 @@ void AMapGeneration::AddConnection(ANavigationNode* FromNode, ANavigationNode* T
 		ToNode->ConnectedNodes.Add(FromNode);
 }
 
+void AMapGeneration::ClearMap()
+{
+	Rooms.Empty();
+	ConnectedTiles.Empty();
+
+	for (TActorIterator<ARoomConstruction> It(GetWorld()); It; ++It)
+	{
+		It->Destroy();
+	}
+
+	for (TActorIterator<ANavigationNode> It(GetWorld()); It; ++It)
+	{
+		It->Destroy();
+	}
+
+	bNoValidRooms = false;
+}
+
 void AMapGeneration::SpawnTeams()
 {
 	int32 MinX = 0;
@@ -1031,7 +1052,32 @@ void AMapGeneration::SpawnTeams()
 
 	int32 RandRoomIndexRed = FMath::RandRange(0, RoomsSpawnRed.Num() - 1);
 
-	
+	Room* RoomToSpawnRed = RoomsSpawnRed[RandRoomIndexRed];
+	TArray<int32> NodeIndexesRed;
+	for (int i = 0; i < RoomToSpawnRed->RoomNodes.Num(); i++)
+	{
+		NodeIndexesRed.Add(i);
+	}
+
+	for (int i = 0; i < NodeIndexesRed.Num(); i++)
+	{
+		int RandIndex = FMath::RandRange(0, NodeIndexesRed.Num() - 1);
+		int Temp = NodeIndexesRed[i];
+		NodeIndexesRed[i] = NodeIndexesRed[RandIndex];
+		NodeIndexesRed[RandIndex] = Temp;
+	}
+
+	for (int i = 0; i < 3; i++)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Spawning Red at: %s"), *RoomToSpawnRed->RoomNodes[NodeIndexesRed[i]]->GetActorLocation().ToString());
+		//AEnemyCharacter* SpawnedEnemy = GetWorld()->SpawnActor<AEnemyCharacter>(AgentToSpawn, RoomToSpawnBlue->RoomNodes[NodeIndexesBlue[i]]->GetActorLocation(), RoomToSpawnBlue->RoomNodes[NodeIndexesBlue[i]]->GetActorRotation());
+	}
+}
+
+void AMapGeneration::SpawnItems()
+{
+
+	UE_LOG(LogTemp, Warning, TEXT("Spawning Items"));
 }
 
 

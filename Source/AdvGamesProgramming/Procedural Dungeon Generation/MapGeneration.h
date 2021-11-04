@@ -71,6 +71,9 @@ public:
 	// Array of all rooms in the level
 	TArray<Room> Rooms;
 
+	// Map of all tiles which have been validated to allow for collisiion detection
+	TMap<FVector, int32> ConnectedTiles;
+
 	void GenerateLevel();
 
 	Room ChooseValidRoomPlacement();
@@ -94,9 +97,6 @@ private:
 
 	// Mark whether the algorithm can no longer find valid rooms for placement
 	bool bNoValidRooms;
-	
-	// Map of all tiles which have been validated to allow for collisiion detection
-	TMap<FVector, int32> ConnectedTiles;
 
 	void PopulateCorners(Room* RoomToGenerate);
 	void PopulateWalls(Room* RoomToGenerate);
@@ -114,5 +114,8 @@ private:
 	void ConnectNodes();
 	void AddConnection(ANavigationNode* FromNode, ANavigationNode* ToNode);
 
+	void ClearMap();
+
 	void SpawnTeams();
+	void SpawnItems();
 };
