@@ -60,68 +60,92 @@ void AEnemyCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+	//AI behavior only work when the health is above 0
 	if (HealthComponent->CurrentHealth > 0)
 	{
+		//In Patrol State
+		//AI will search for different things in this state, depending on its health. AI can either looking for Enemy or Health pickup.
 		if (CurrentAgentState == AgentState::PATROL)
 		{
-			AgentPatrol();
+			AgentPatrol();	
+
+			//if AI can see an Enemy, and the health is above 40%. Then engage with enemy
 			if (bCanSeePlayer && HealthComponent->HealthPercentageRemaining() >= 40.0f)
 			{
-
 				CurrentAgentState = AgentState::ENGAGE;
+				//Abandon current path, engage immediately 
 				Path.Empty();
 			}
 
+			//if AI can see an Enemy, and the health is below 40%. Then Evade the enemy
 			else if (bCanSeePlayer && HealthComponent->HealthPercentageRemaining() < 40.0f)
 			{
 				CurrentAgentState = AgentState::EVADE;
+				//Abandon current path, evade immediately
 				Path.Empty();
 			}
 
+			//if AI can not see an Enemy, and health is below 40%, and can see a health pickup. Then go pickup that health pickup
 			else if (!bCanSeePlayer && HealthComponent->HealthPercentageRemaining() < 40.0f && bCanSeeHealthPickup)
 			{
 				CurrentAgentState = AgentState::HEAL;
+				//Abandon current path, get the health pickup immediately
 				Path.Empty();
 			}
 		}
 
+		//In Engage State
 		else if (CurrentAgentState == AgentState::ENGAGE)
 		{
 			AgentEngage();
+
+			//if AI can not see an Enemy, and the health is above 40%. Then Partrol (Search for Enemy)
 			if (!bCanSeePlayer && HealthComponent->HealthPercentageRemaining() >= 40.0f)
 			{
 				CurrentAgentState = AgentState::PATROL;
+				//Do not abandon current path, if the AI lost the enemy in sight, follow the path to the end to search for enemy
 			}
 
+			//if AI can see an Enemy, and the health is below 40%. Then Evade the enemy
 			else if (bCanSeePlayer && HealthComponent->HealthPercentageRemaining() < 40.0f)
 			{
 				CurrentAgentState = AgentState::EVADE;
+				//Abandon current path, quit engage and evade immediately
 				Path.Empty();
 			}
 		}
 
+        //In Evade State
+		//In this state, AI will get the health pickup priorly when both Enemy and health pickup are visible. 
 		else if (CurrentAgentState == AgentState::EVADE)
 		{
 			AgentEvade();
+
+			//if AI can see a health pickup and health is below 40%. Then go pickup that health pickup
 			if (bCanSeeHealthPickup && HealthComponent->HealthPercentageRemaining() < 40.0f)
 			{
 				CurrentAgentState = AgentState::HEAL;
+				//Abandon current path, get the health pickup immediately. (Even with an Enemy nearby)
 				Path.Empty();
 			}
 
-			else if (!bCanSeeHealthPickup && HealthComponent->HealthPercentageRemaining() < 40.0f && !bCanSeePlayer)
+			//if AI can not see an Enemy, can not see a health pickup, and health is below 40%. Then Patrol (search for health pickup)
+			else if (!bCanSeePlayer && !bCanSeeHealthPickup && HealthComponent->HealthPercentageRemaining() < 40.0f)
 			{
 				CurrentAgentState = AgentState::PATROL;
-				Path.Empty();
+				//Do not abandon current path, evade to a safe position first before go back to patrol (search for health pickup)
 			}
 
+			//if AI can see an Enemy, and health is above 40%. Then Engage with the Enemy. (This only occurs when AI didn't see the health pickup but accidentally stepped on the health pickup during the process of Evading)
 			else if (bCanSeePlayer && HealthComponent->HealthPercentageRemaining() >= 40.0f)
 			{
 				CurrentAgentState = AgentState::ENGAGE;
+				//Abandon current path, engage immediately
 				Path.Empty();
 			}
 		}
 
+		//In Heal State
 		else if (CurrentAgentState == AgentState::HEAL)
 		{
 			AgentHeal();
@@ -153,9 +177,6 @@ void AEnemyCharacter::Tick(float DeltaTime)
 				CurrentAgentState = AgentState::PATROL;
 				Path.Empty();
 			}
-
-				
-
 		}
 		/*
 		else if (CurrentAgentState == AgentState::CHASE)
@@ -222,6 +243,7 @@ void AEnemyCharacter::Tick(float DeltaTime)
 			}
 		}
 		*/
+
 		MoveAlongPath();
 		//Reload();
 	}
@@ -243,6 +265,7 @@ void AEnemyCharacter::AgentPatrol()
 		{
 			UE_LOG(LogTemp, Warning, TEXT("Enter Patrol"));
 			Path = Manager->GeneratePath(CurrentNode, Manager->AllNodes[FMath::RandRange(0, Manager->AllNodes.Num() - 1)]);
+			UE_LOG(LogTemp, Warning, TEXT("Enter Patrol1"));
 		}
 	}
 }
@@ -390,8 +413,7 @@ void AEnemyCharacter::SetCanHealToTrue()
 
 void AEnemyCharacter::MoveAlongPath()
 {
-	if ((GetActorLocation() - CurrentNode->GetActorLocation()).IsNearlyZero(PathfindingNodeAccuracy)
-		&& Path.Num() > 0)
+	if ((GetActorLocation() - CurrentNode->GetActorLocation()).IsNearlyZero(PathfindingNodeAccuracy) && Path.Num() > 0)
 	{
 		CurrentNode = Path.Pop();
 	}

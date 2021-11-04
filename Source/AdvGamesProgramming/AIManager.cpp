@@ -111,6 +111,8 @@ TArray<ANavigationNode*> AAIManager::ReconstructPath(ANavigationNode* StartNode,
 		Path.Add(CurrentNode);
 		CurrentNode = CurrentNode->CameFrom;
 	}
+	UE_LOG(LogTemp, Warning, TEXT("Start Node: %s"), *StartNode->GetActorLocation().ToString());
+	UE_LOG(LogTemp, Warning, TEXT("End Node: %s"), *EndNode->GetActorLocation().ToString());
 	return Path;
 }
 
