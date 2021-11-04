@@ -12,7 +12,6 @@ APickupManager::APickupManager()
 {
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
-
 }
 
 void APickupManager::Init(const TArray<FVector>& PossibleSpawnLocationsArg, TSubclassOf<APickup> WeaponPickupClassArg, float SpawnIntervalArg)
@@ -27,10 +26,10 @@ void APickupManager::SpawnWeaponPickup()
 	int32 RandomLocation = FMath::RandRange(0, PossibleSpawnLocations.Num() - 1);
 	APickup* WeaponPickup = GetWorld()->SpawnActor<APickup>(WeaponPickupClass, PossibleSpawnLocations[RandomLocation] + FVector(0.0f,0.0f,50.0f), FRotator::ZeroRotator);
 	WeaponPickup->SetLifeSpan(PICKUP_LIFETIME);
-
+	UE_LOG(LogTemp, Warning, TEXT("Pickup Spawned"));
 	if (GEngine)
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Red, FString::Printf(TEXT("Pickup Spawned")));
+		GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Red, FString::Printf(TEXT("Pickup Spawned :)")));
 	}
 }
 
@@ -38,9 +37,7 @@ void APickupManager::SpawnWeaponPickup()
 void APickupManager::BeginPlay()
 {
 	Super::BeginPlay();
-
 	GetWorldTimerManager().SetTimer(WeaponSpawnTimer, this, &APickupManager::SpawnWeaponPickup, SpawnInterval, true, 0.0f);
-	
 }
 
 // Called every frame

@@ -20,11 +20,8 @@ void AMultiplayerGameMode::InitGame(const FString& MapName, const FString& Optio
 	{
 		ProceduralMap = *It;
 	}
-	
-	/*for (TActorIterator<AProcedurallyGeneratedMap> It(GetWorld()); It; ++It)
-	{
-		ProceduralMap = *It;
-	}*/
+
+	TArray<FVector> Vertices;
 
 	// Log a warning if the procedural map does not exist.
 	if (!ProceduralMap)
@@ -34,9 +31,13 @@ void AMultiplayerGameMode::InitGame(const FString& MapName, const FString& Optio
 	else
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Procedural Map found"))
+		for (auto It = ProceduralMap->ConnectedTiles.CreateIterator(); It; ++It)
+		{
+			Vertices.Add(It->Key * FVector(300, 300, 0));
+		}
 	}
 
-	/*PickupManager = GetWorld()->SpawnActor<APickupManager>();
+	PickupManager = GetWorld()->SpawnActor<APickupManager>();
 	if (!PickupManager)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Unable to spawn the APickupManager"))
@@ -44,8 +45,12 @@ void AMultiplayerGameMode::InitGame(const FString& MapName, const FString& Optio
 
 	if (ProceduralMap && PickupManager)
 	{
-		PickupManager->Init(ProceduralMap->Vertices, WeaponPickupClass, WEAPON_PICKUP_SPAWN_INTERVAL);
-	}*/
+		UE_LOG(LogTemp, Warning, TEXT("Vertices: %d"), Vertices.Num());
+		if (!Vertices.Num() == 0)
+		{
+			PickupManager->Init(Vertices, WeaponPickupClass, WEAPON_PICKUP_SPAWN_INTERVAL);
+		}
+	}
 
 }
 

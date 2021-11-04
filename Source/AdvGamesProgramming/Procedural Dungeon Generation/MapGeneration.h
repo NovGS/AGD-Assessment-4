@@ -72,6 +72,7 @@ public:
 	TArray<Room> Rooms;
 
 	// Map of all tiles which have been validated to allow for collisiion detection
+	UPROPERTY(VisibleAnywhere)
 	TMap<FVector, int32> ConnectedTiles;
 
 	void GenerateLevel();
