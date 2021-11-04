@@ -19,6 +19,7 @@ private:
 
 	class AProcedurallyGeneratedMap* ProceduralMap;
 	class APickupManager* PickupManager;
+	class AAIManager* AIManager;
 
 public:
 	UPROPERTY(EditDefaultsOnly)

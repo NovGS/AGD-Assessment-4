@@ -82,9 +82,16 @@ void AEnemyCharacter::Tick(float DeltaTime)
 			CurrentAgentState = AgentState::ENGAGE;
 			Path.Empty();
 		}
+<<<<<<< Updated upstream
 	}
 
 	MoveAlongPath();
+=======
+		*/
+
+		MoveAlongPath();
+	}
+>>>>>>> Stashed changes
 }
 
 // Called to bind functionality to input
@@ -109,8 +116,13 @@ void AEnemyCharacter::AgentEngage()
 {
 	if (bCanSeeActor && DetectedActor)
 	{
+<<<<<<< Updated upstream
 		FVector FireDirection = DetectedActor->GetActorLocation() - GetActorLocation();
 		Fire(FireDirection);
+=======
+		FVector FireDirection = DetectedPlayer->GetActorLocation() - GetActorLocation();
+		//Fire(FireDirection);
+>>>>>>> Stashed changes
 	}
 	if (Path.Num() == 0 && DetectedActor)
 	{
@@ -157,7 +169,9 @@ void AEnemyCharacter::MoveAlongPath()
 	}
 	else if (!(GetActorLocation() - CurrentNode->GetActorLocation()).IsNearlyZero(PathfindingNodeAccuracy))
 	{
+		UE_LOG(LogTemp, Warning, TEXT("Current Location: %s"), *GetActorLocation().ToString());
 		AddMovementInput(CurrentNode->GetActorLocation() - GetActorLocation());
+		UE_LOG(LogTemp, Warning, TEXT("Finished moving: %s"), *CurrentNode->GetActorLocation().ToString());
 	}
 }
 

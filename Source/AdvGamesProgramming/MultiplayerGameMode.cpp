@@ -11,6 +11,7 @@
 #include "TimerManager.h"
 #include "PlayerHUD.h"
 #include "PlayerCharacter.h"
+#include "AIManager.h"
 
 void AMultiplayerGameMode::InitGame(const FString& MapName, const FString& Options, FString& ErrorMessages)
 {
@@ -27,7 +28,28 @@ void AMultiplayerGameMode::InitGame(const FString& MapName, const FString& Optio
 		UE_LOG(LogTemp, Warning, TEXT("No Procedural Map found in the level"))
 	}
 
+<<<<<<< Updated upstream
 	PickupManager = GetWorld()->SpawnActor<APickupManager>();
+=======
+	//AIManager = GetWorld()->SpawnActor<AAIManager>();
+
+	for (TActorIterator<AAIManager> It(GetWorld()); It; ++It)
+	{
+		AIManager = *It;
+	}
+
+	if (!AIManager)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Unable to spawn the APickupManager"))
+	}
+
+	if (ProceduralMap && AIManager)
+	{
+		AIManager->Init();
+	}
+	
+	/*PickupManager = GetWorld()->SpawnActor<APickupManager>();
+>>>>>>> Stashed changes
 	if (!PickupManager)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Unable to spawn the APickupManager"))
@@ -35,8 +57,18 @@ void AMultiplayerGameMode::InitGame(const FString& MapName, const FString& Optio
 
 	if (ProceduralMap && PickupManager)
 	{
+<<<<<<< Updated upstream
 		PickupManager->Init(ProceduralMap->Vertices, WeaponPickupClass, WEAPON_PICKUP_SPAWN_INTERVAL);
 	}
+=======
+		TArray<FVector> NodeLocations;
+		for (auto It = ProceduralMap->ConnectedTiles.CreateIterator(); It; ++It)
+		{
+			NodeLocations.Add(It->Key);
+		}
+		PickupManager->Init(NodeLocations, WeaponPickupClass, WEAPON_PICKUP_SPAWN_INTERVAL);
+	}*/
+>>>>>>> Stashed changes
 
 }
 

@@ -32,6 +32,8 @@ public:
 	UPROPERTY(EditAnywhere)
 	float AllowedAngle;
 
+	void Init();
+
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
@@ -52,7 +54,7 @@ public:
 	*/
 	ANavigationNode* FindFurthestNode(const FVector& Location);
 
-	void GenerateNodes(const TArray<FVector>& Vertices, int32 Width, int32 Height);
+	//void GenerateNodes(const TArray<FVector>& Vertices, int32 Width, int32 Height);
 	void AddConnection(ANavigationNode* FromNode, ANavigationNode* ToNode);
 
 private:

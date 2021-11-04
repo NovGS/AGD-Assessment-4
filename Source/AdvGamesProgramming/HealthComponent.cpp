@@ -52,6 +52,7 @@ void UHealthComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 void UHealthComponent::OnTakeDamage(float Damage)
 {
 	CurrentHealth -= Damage;
+	UE_LOG(LogTemp, Warning, TEXT("Current Health: %d"), CurrentHealth);
 	if (CurrentHealth <= 0.0f)
 	{
 		CurrentHealth = 0;
