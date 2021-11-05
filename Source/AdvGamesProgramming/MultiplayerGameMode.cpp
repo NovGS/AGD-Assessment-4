@@ -11,6 +11,7 @@
 #include "TimerManager.h"
 #include "PlayerHUD.h"
 #include "PlayerCharacter.h"
+#include "AIManager.h"
 
 void AMultiplayerGameMode::InitGame(const FString& MapName, const FString& Options, FString& ErrorMessages)
 {
@@ -50,6 +51,31 @@ void AMultiplayerGameMode::InitGame(const FString& MapName, const FString& Optio
 		{
 			PickupManager->Init(Vertices, WeaponPickupClass, WEAPON_PICKUP_SPAWN_INTERVAL);
 		}
+	}
+
+	AIManager = GetWorld()->SpawnActor<AAIManager>();
+	if (!AIManager)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Unable to spawn the APickupManager"))
+	}
+
+	if (ProceduralMap && AIManager)
+	{
+		AIManager->Init(EnemyCharacterClass, NUM_AI);
+		
+		/*static ConstructorHelpers::FObjectFinder<UBlueprint> EnemyCharacterBlueprint(TEXT("/Game/Blueprints/EnemyCharacter/Blueprints/EnemyCharacterBlueprint"));
+		EnemyCharacterClass = (UClass*)EnemyCharacterBlueprint.Object->GeneratedClass;*/
+
+		/*static ConstructorHelpers::FClassFinder<AEnemyCharacter> EnemyCharacterObject(TEXT("/Game/Blueprints/EnemyCharacter/Blueprints/EnemyCharacterBlueprint"));
+		EnemyCharacterClass = EnemyCharacterObject.Class;
+
+		GetWorld()->SpawnActor<AEnemyCharacter>(EnemyCharacterClass, FVector(1500, 900, 0), FRotator::ZeroRotator);*/
+
+		/*UE_LOG(LogTemp, Warning, TEXT("Vertices: %d"), Vertices.Num());
+		if (!Vertices.Num() == 0)
+		{
+			PickupManager->Init(Vertices, WeaponPickupClass, WEAPON_PICKUP_SPAWN_INTERVAL);
+		}*/
 	}
 
 }

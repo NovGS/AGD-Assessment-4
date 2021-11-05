@@ -17,14 +17,19 @@ class ADVGAMESPROGRAMMING_API AMultiplayerGameMode : public AGameMode
 
 private:
 	const float WEAPON_PICKUP_SPAWN_INTERVAL = 10.0f;
+	const int32 NUM_AI = 1;
 
 	//class AProcedurallyGeneratedMap* ProceduralMap;
 	class AMapGeneration* ProceduralMap;
 	class APickupManager* PickupManager;
+	class AAIManager* AIManager;
 
 public:
 	UPROPERTY(EditDefaultsOnly)
 	TSubclassOf<class APickup> WeaponPickupClass;
+
+	UPROPERTY(EditDefaultsOnly)
+	TSubclassOf<class AEnemyCharacter> EnemyCharacterClass;
 
 	void InitGame(const FString& MapName, const FString& Options, FString& ErrorMessages) override;
 	void Respawn(AController* Controller);

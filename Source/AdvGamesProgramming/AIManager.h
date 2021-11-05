@@ -20,14 +20,19 @@ protected:
 	virtual void BeginPlay() override;
 
 public:	
+
+	void Init(TSubclassOf<class AEnemyCharacter> EnemyCharacterClassArg, int32 NumAIArg);
+
 	UPROPERTY(EditAnywhere, Category = "AI Properties")
 	int32 NumAI;
 	UPROPERTY(VisibleAnywhere, Category = "Navigation Nodes")
 	TArray<class ANavigationNode*> AllNodes;
 	UPROPERTY(VisibleAnywhere, Category = "Agents")
-	TArray<class AEnemyCharacter*> AllAgents;
+	TArray<AEnemyCharacter*> AllAgents;
 	UPROPERTY(EditAnywhere, Category = "Agents")
 	TSubclassOf<AEnemyCharacter> AgentToSpawn;
+
+	TSubclassOf<AEnemyCharacter> EnemyCharacterClass;
 
 	UPROPERTY(EditAnywhere)
 	float AllowedAngle;

@@ -19,14 +19,23 @@ AAIManager::AAIManager()
 void AAIManager::BeginPlay()
 {
 	Super::BeginPlay();
-	
+}
+
+void AAIManager::Init(TSubclassOf<AEnemyCharacter> EnemyCharacterClassArg, int32 NumAIArg)
+{
+	this->NumAI = NumAIArg;
+	this->EnemyCharacterClass = EnemyCharacterClassArg;
+
 	if (AllNodes.Num() == 0)
 	{
 		UE_LOG(LogTemp, Display, TEXT("POPULATING NODES"))
-		PopulateNodes();
+			PopulateNodes();
 	}
+	
+	UE_LOG(LogTemp, Warning, TEXT("Number of nodes: %i"), AllNodes.Num());
+	UE_LOG(LogTemp, Warning, TEXT("Num AI: %i"), NumAI);
+
 	CreateAgents();
-	UE_LOG(LogTemp, Warning, TEXT("Number of nodes: %i"), AllNodes.Num())
 }
 
 // Called every frame
@@ -126,14 +135,23 @@ void AAIManager::PopulateNodes()
 
 void AAIManager::CreateAgents()
 {
+	UE_LOG(LogTemp, Warning, TEXT("Creating Enemies"));
 	if (AllNodes.Num() > 0)
 	{
 		for (int32 i = 0; i < NumAI; i++)
 		{
 			// Get a random node index
 			int32 NodeIndex = FMath::RandRange(0, AllNodes.Num() - 1);
-			AEnemyCharacter* SpawnedEnemy = GetWorld()->SpawnActor<AEnemyCharacter>(AgentToSpawn, AllNodes[NodeIndex]->GetActorLocation(), AllNodes[NodeIndex]->GetActorRotation());
+			AEnemyCharacter* SpawnedEnemy = GetWorld()->SpawnActor<AEnemyCharacter>(EnemyCharacterClass, AllNodes[NodeIndex]->GetActorLocation(), AllNodes[NodeIndex]->GetActorRotation());
 			SpawnedEnemy->Manager = this;
+			if (SpawnedEnemy->Manager == nullptr)
+			{
+				UE_LOG(LogTemp, Warning, TEXT("CreateAgents: AIManager is nullptr"));
+			}
+			else
+			{
+				UE_LOG(LogTemp, Warning, TEXT("CreateAgents: AIManager exists"));
+			}
 			SpawnedEnemy->CurrentNode = AllNodes[NodeIndex];
 		}
 	}

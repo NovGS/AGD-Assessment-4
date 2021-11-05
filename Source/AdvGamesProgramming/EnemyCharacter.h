@@ -41,6 +41,8 @@ public:
 	//bool bCanHeal;
 	TArray <class ANavigationNode* > Path;
 	ANavigationNode* CurrentNode;
+	
+	UPROPERTY(VisibleAnywhere)
 	class AAIManager* Manager;
 
 	UPROPERTY(EditAnywhere, meta=(UIMin="10.0", UIMax="1000.0", ClampMin="10.0", ClampMax="1000.0"))
