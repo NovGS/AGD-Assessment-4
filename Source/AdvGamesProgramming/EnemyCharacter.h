@@ -16,7 +16,7 @@ enum class AgentState : uint8
 	EVADE,
 	CHASE,
 	HEAL,
-	Reload
+	RELOAD
 };
 
 UCLASS()
@@ -32,11 +32,11 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
-public:	
+public:
 
 	TArray <class ANavigationNode* > Path;
 	ANavigationNode* CurrentNode;
-	
+
 	UPROPERTY(VisibleAnywhere)
 	class AAIManager* Manager;
 
@@ -66,9 +66,10 @@ public:
 	FVector PlayerLocation;
 	float SprintMultiplier;
 
-
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
+
+	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
@@ -78,8 +79,6 @@ public:
 	void AgentEvade();
 	void AgentHeal();
 	void AgentReload();
-
-
 
 	UFUNCTION(blueprintCallable)
 	void SensePlayer(AActor* ActorSensed, FAIStimulus Stimulus);
@@ -93,17 +92,21 @@ public:
 	UFUNCTION(BlueprintCallable, blueprintimplementableevent)
 	void Fire(FVector FireDirection);
 
-
-	//UFUNCTION(BlueprintImplementableEvent)
-	//void BlueprintReload();
-	//void Reload();
-
+	//Set up team id for the AI
+	FGenericTeamId TeamId;
 
 private:
 
 	void MoveAlongPath();
 
-	//Set up team id for the AI
-	FGenericTeamId TeamId;
 	virtual FGenericTeamId GetGenericTeamId() const override;
+
+	UFUNCTION()
+	virtual void OnRep_SetMaterial();
+
+	UPROPERTY(ReplicatedUsing = OnRep_SetMaterial)
+	UMaterialInstance* Material;
+
+	UMaterialInstance* RedMaterial;
+	UMaterialInstance* BlueMaterial;
 };

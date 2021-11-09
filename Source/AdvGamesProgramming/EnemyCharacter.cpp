@@ -1,7 +1,5 @@
 
 // Fill out your copyright notice in the Description page of Project Settings.
-
-
 #include "EnemyCharacter.h"
 #include "AIManager.h"
 #include "NavigationNode.h"
@@ -9,7 +7,11 @@
 #include "Perception/AIPerceptionComponent.h"
 #include "Math/UnrealMathUtility.h"
 #include "HealthComponent.h"
-
+#include "Materials/MaterialInstance.h"
+#include "UObject/ConstructorHelpers.h"
+#include "Components/SkeletalMeshComponent.h"
+#include "UObject/Object.h"
+#include "Net/UnrealNetwork.h"
 
 // Sets default values
 AEnemyCharacter::AEnemyCharacter()
@@ -22,23 +24,31 @@ AEnemyCharacter::AEnemyCharacter()
 	PickupAccuracy = 50.0f;
 	SprintMultiplier = 1.5f;
 
-	//Set AI's GenericTeamID to 0, In the EnemyCharacterBlueprint set the AI perception to only detect Enemy
-	TeamId = FGenericTeamId(0);
+	static ConstructorHelpers::FObjectFinder<UMaterialInstance> MaterialInstanceBlueObject(TEXT("/Game/Assets/Mannequin/UE4_Mannequin/Materials/M_UE4Man_Body_Blue"));
+	BlueMaterial = MaterialInstanceBlueObject.Object;
 
-
-	
+	static ConstructorHelpers::FObjectFinder<UMaterialInstance> MaterialInstanceRedObject(TEXT("/Game/Assets/Mannequin/UE4_Mannequin/Materials/M_UE4Man_Body_Red"));
+	RedMaterial = MaterialInstanceRedObject.Object;
 }
-
 
 // Called when the game starts or when spawned
 void AEnemyCharacter::BeginPlay()
 {
 	Super::BeginPlay();
-	
+
+	switch (TeamId)
+	{
+	case 0:
+		Material = BlueMaterial;
+		break;
+	case 1:
+		Material = RedMaterial;
+		break;
+	}
+
 	Cast<UCharacterMovementComponent>(GetMovementComponent())->bOrientRotationToMovement = true;
 
 	HealthComponent = FindComponentByClass<UHealthComponent>();
-
 
 	PerceptionComponent = FindComponentByClass<UAIPerceptionComponent>();
 	if (PerceptionComponent)
@@ -78,7 +88,7 @@ void AEnemyCharacter::Tick(float DeltaTime)
 				if (bCanSeePlayer && HealthComponent->HealthPercentageRemaining() >= 40.0f && !bIsBulletEmpty )
 				{
 					CurrentAgentState = AgentState::ENGAGE;
-					//Abandon current path, engage immediately 
+					//Abandon current path, engage immediately
 					Path.Empty();
 				}
 
@@ -101,12 +111,10 @@ void AEnemyCharacter::Tick(float DeltaTime)
 				//if AI dont have bullet left, and health is above 40%, Then Reload
 				else if (bIsBulletEmpty && HealthComponent->HealthPercentageRemaining() >= 40.0f)
 				{
-					CurrentAgentState = AgentState::Reload;
+					CurrentAgentState = AgentState::RELOAD;
 					//Abandon current path, get the weapon pickup immediately
 					Path.Empty();
 				}
-
-					
 			}
 
 			//In Engage State
@@ -129,10 +137,10 @@ void AEnemyCharacter::Tick(float DeltaTime)
 					Path.Empty();
 				}
 
-				//if AI run out of bullet in the engage state, 
+				//if AI run out of bullet in the engage state,
 				else if (bIsBulletEmpty)
 				{
-					CurrentAgentState = AgentState::Reload;
+					CurrentAgentState = AgentState::RELOAD;
 					Path.Empty();
 				}
 
@@ -140,7 +148,7 @@ void AEnemyCharacter::Tick(float DeltaTime)
 			}
 
 			//In Evade State
-			//In this state, AI will get the health pickup priorly when both Enemy and health pickup are visible. 
+			//In this state, AI will get the health pickup priorly when both Enemy and health pickup are visible.
 			else if (CurrentAgentState == AgentState::EVADE)
 			{
 				AgentEvade();
@@ -208,10 +216,9 @@ void AEnemyCharacter::Tick(float DeltaTime)
 			}
 
 			//In Reload State
-			else if (CurrentAgentState == AgentState::Reload)
+			else if (CurrentAgentState == AgentState::RELOAD)
 			{
 				AgentReload();
-
 
 				// if AI get the weapon pickup, health is above 40% and can see an enemy. then re-engage
 				if (!bIsBulletEmpty && HealthComponent->HealthPercentageRemaining() >= 40.0f && bCanSeePlayer)
@@ -257,12 +264,19 @@ void AEnemyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComp
 
 }
 
+void AEnemyCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(AEnemyCharacter, Material);
+}
+
 void AEnemyCharacter::AgentPatrol()
 {
 	if (Path.Num() == 0)
 	{
 		if (Manager)
-		{	
+		{
 			Path = Manager->GeneratePath(CurrentNode, Manager->AllNodes[FMath::RandRange(0, Manager->AllNodes.Num() - 1)]);
 		}
 
@@ -317,15 +331,17 @@ void AEnemyCharacter::AgentReload()
 }
 
 
-//As the player's GenericTeamId is set to 1, which is considered as the enemy of AI. 
+//As the player's GenericTeamId is set to 1, which is considered as the enemy of AI.
 //Thus, the AI will react to the player.
 void AEnemyCharacter::SensePlayer(AActor* ActorSensed, FAIStimulus Stimulus)
 {
 	//Cast to the IGenericTeamAgentInterface using ActorSensed (Player) as parameter
 		if (IGenericTeamAgentInterface* TeamAgentInterface = Cast<IGenericTeamAgentInterface>(ActorSensed))
 		{
-	        //When sensed actor's TeamId = 1, indicates thats an Enemy
-			if (TeamAgentInterface->GetGenericTeamId() == 1)
+			int32 EnemyId = (TeamId == 0) ? 1 : 0;
+
+	        //When sensed Player
+			if (TeamAgentInterface->GetGenericTeamId() == EnemyId)
 			{
 				if (Stimulus.WasSuccessfullySensed())
 				{
@@ -344,7 +360,7 @@ void AEnemyCharacter::SensePlayer(AActor* ActorSensed, FAIStimulus Stimulus)
 }
 
 //The health pickup's GenericTeamId is set to 2, which is the enemy of AI.
-//Thus, the AI will react to the health pickup, different to player 
+//Thus, the AI will react to the health pickup, different to player
 void AEnemyCharacter::SenseHealthPickup(AActor* ActorSensed, FAIStimulus Stimulus)
 {
 	if (IGenericTeamAgentInterface* TeamAgentInterface = Cast<IGenericTeamAgentInterface>(ActorSensed))
@@ -388,15 +404,9 @@ void AEnemyCharacter::SenseWeaponPickup(AActor* ActorSensed, FAIStimulus Stimulu
 	}
 }
 
-//void AEnemyCharacter::Reload()
-//{
-	//BlueprintReload();
-//}
-
-
 void AEnemyCharacter::MoveAlongPath()
 {
-	
+
 	if ((GetActorLocation() - CurrentNode->GetActorLocation()).IsNearlyZero(PathfindingNodeAccuracy) && Path.Num() > 0)
 	{
 		CurrentNode = Path.Pop();
@@ -407,15 +417,14 @@ void AEnemyCharacter::MoveAlongPath()
 	}
 }
 
+void AEnemyCharacter::OnRep_SetMaterial()
+{
+	USkeletalMeshComponent* SkeletalMesh = FindComponentByClass<USkeletalMeshComponent>();
+	SkeletalMesh->SetMaterial(0, Material);
+}
+
 
 FGenericTeamId AEnemyCharacter::GetGenericTeamId() const
 {
 	return TeamId;
 }
-
-
-
-
-
-
-
