@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Pickup.h"
+#include "GenericTeamAgentInterface.h"
 #include "WeaponPickup.generated.h"
 
 
@@ -17,11 +18,12 @@ enum class EWeaponPickupRarity : uint8
 };
 
 UCLASS()
-class ADVGAMESPROGRAMMING_API AWeaponPickup : public APickup
+class ADVGAMESPROGRAMMING_API AWeaponPickup : public APickup, public IGenericTeamAgentInterface
 {
 	GENERATED_BODY()
 	
 public:
+	AWeaponPickup();
 
 	UPROPERTY(Replicated, BlueprintReadOnly, VisibleAnywhere)
 	EWeaponPickupRarity Rarity;
@@ -45,4 +47,7 @@ public:
 private:
 	void GenerateRandomBoolArray(int32 ArrayLength, int32 NumTrue, TArray<bool>& RandBoolArray);
 
+	//Set up team id for the Weapon Pickup
+	FGenericTeamId TeamId;
+	virtual FGenericTeamId GetGenericTeamId() const override;
 };

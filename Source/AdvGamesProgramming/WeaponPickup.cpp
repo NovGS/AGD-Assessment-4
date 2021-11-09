@@ -4,10 +4,14 @@
 #include "WeaponPickup.h"
 #include "Net/UnrealNetwork.h"
 
+AWeaponPickup::AWeaponPickup()
+{
+	TeamId = FGenericTeamId(3);
+}
+
 void AWeaponPickup::OnGenerate()
 {
 	APickup::OnGenerate();
-
 	float RarityValue = FMath::RandRange(0.0f, 1.0f);
 	TArray<bool> RandBoolArray;
 
@@ -66,4 +70,9 @@ void AWeaponPickup::GenerateRandomBoolArray(int32 ArrayLength, int32 NumTrue, TA
 		RandBoolArray[i] = RandBoolArray[RandIndex];
 		RandBoolArray[RandIndex] = Temp;
 	}
+}
+
+FGenericTeamId AWeaponPickup::GetGenericTeamId() const
+{
+	return TeamId;
 }

@@ -15,9 +15,8 @@ enum class AgentState : uint8
 	ENGAGE,
 	EVADE,
 	CHASE,
-	HEAL
-	//CHECK,
-	//HEAL
+	HEAL,
+	Reload
 };
 
 UCLASS()
@@ -34,11 +33,7 @@ protected:
 	virtual void BeginPlay() override;
 
 public:	
-	//FTimerHandle SpinTimerHandle;
-	//bool bDoOnce;
 
-	UPROPERTY(VisibleAnywhere, Category = "AI")
-	//bool bCanHeal;
 	TArray <class ANavigationNode* > Path;
 	ANavigationNode* CurrentNode;
 	
@@ -47,6 +42,9 @@ public:
 
 	UPROPERTY(EditAnywhere, meta=(UIMin="10.0", UIMax="1000.0", ClampMin="10.0", ClampMax="1000.0"))
 	float PathfindingNodeAccuracy;
+
+	UPROPERTY(EditAnywhere, meta = (UIMin = "10.0", UIMax = "1000.0", ClampMin = "10.0", ClampMax = "1000.0"))
+	float PickupAccuracy;
 
 	class UHealthComponent* HealthComponent;
 
@@ -59,6 +57,11 @@ public:
 	bool bCanSeePlayer;
 	AActor* DetectedHealthPickup;
 	bool bCanSeeHealthPickup;
+	AActor* DetectedWeaponPickup;
+	bool bCanSeeWeaponPickup;
+
+	UPROPERTY(BlueprintReadWrite)
+	bool bIsBulletEmpty;
 
 	FVector PlayerLocation;
 	float SprintMultiplier;
@@ -73,28 +76,28 @@ public:
 	void AgentPatrol();
 	void AgentEngage();
 	void AgentEvade();
-	void AgentChase();
 	void AgentHeal();
-	//void AgentCheck();
-	//void AgentHeal();
+	void AgentReload();
+
+
 
 	UFUNCTION(blueprintCallable)
 	void SensePlayer(AActor* ActorSensed, FAIStimulus Stimulus);
 
 	UFUNCTION(blueprintCallable)
-	void SenseHealthPickUp(AActor* ActorSensed, FAIStimulus Stimulus);
+	void SenseHealthPickup(AActor* ActorSensed, FAIStimulus Stimulus);
 
-	UFUNCTION(BlueprintImplementableEvent)
+	UFUNCTION(blueprintCallable)
+	void SenseWeaponPickup(AActor* ActorSensed, FAIStimulus Stimulus);
+
+	UFUNCTION(BlueprintCallable, blueprintimplementableevent)
 	void Fire(FVector FireDirection);
 
 
-	UFUNCTION(BlueprintImplementableEvent)
-	void BlueprintReload();
+	//UFUNCTION(BlueprintImplementableEvent)
+	//void BlueprintReload();
+	//void Reload();
 
-	void Reload();
-
-
-	//void SetCanHealToTrue();
 
 private:
 
