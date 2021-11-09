@@ -11,7 +11,6 @@
 #include "HealthComponent.h"
 
 
-
 // Sets default values
 AEnemyCharacter::AEnemyCharacter()
 {
@@ -20,12 +19,13 @@ AEnemyCharacter::AEnemyCharacter()
 
 	CurrentAgentState = AgentState::PATROL;
 	PathfindingNodeAccuracy = 100.0f;
+	PickupAccuracy = 50.0f;
 	SprintMultiplier = 1.5f;
 
 	//Set AI's GenericTeamID to 0, In the EnemyCharacterBlueprint set the AI perception to only detect Enemy
 	TeamId = FGenericTeamId(0);
-	//bDoOnce = false;
-	//bCanHeal = false;
+
+
 	
 }
 
@@ -44,18 +44,18 @@ void AEnemyCharacter::BeginPlay()
 	if (PerceptionComponent)
 	{
 		PerceptionComponent->OnTargetPerceptionUpdated.AddDynamic(this, &AEnemyCharacter::SensePlayer);
-		PerceptionComponent->OnTargetPerceptionUpdated.AddDynamic(this, &AEnemyCharacter::SenseHealthPickUp);
+		PerceptionComponent->OnTargetPerceptionUpdated.AddDynamic(this, &AEnemyCharacter::SenseHealthPickup);
+		PerceptionComponent->OnTargetPerceptionUpdated.AddDynamic(this, &AEnemyCharacter::SenseWeaponPickup);
 	}
 
 	DetectedPlayer = nullptr;
 	bCanSeePlayer = false;
 	DetectedHealthPickup = nullptr;
 	bCanSeeHealthPickup = false;
+	DetectedWeaponPickup = nullptr;
+	bCanSeeWeaponPickup = false;
 
-	CurrentAgentState = AgentState::PATROL;
-	AgentPatrol();
-
-
+	bIsBulletEmpty = false;
 }
 
 // Called every frame
@@ -69,13 +69,13 @@ void AEnemyCharacter::Tick(float DeltaTime)
 		if (HealthComponent->CurrentHealth > 0)
 		{
 			//In Patrol State
-			//AI will search for different things in this state, depending on its health. AI can either looking for Enemy or Health pickup.
+			//AI will search for different things in this state, depending on its health and bullet left. AI's target can be Player, Health pickup or Weapon Pickup.
 			if (CurrentAgentState == AgentState::PATROL)
 			{
 				AgentPatrol();
 
-				//if AI can see an Enemy, and the health is above 40%. Then engage with enemy
-				if (bCanSeePlayer && HealthComponent->HealthPercentageRemaining() >= 40.0f)
+				//if AI can see an Enemy, the health is above 40%, and Still have bullet. Then engage with enemy
+				if (bCanSeePlayer && HealthComponent->HealthPercentageRemaining() >= 40.0f && !bIsBulletEmpty )
 				{
 					CurrentAgentState = AgentState::ENGAGE;
 					//Abandon current path, engage immediately 
@@ -97,6 +97,16 @@ void AEnemyCharacter::Tick(float DeltaTime)
 					//Abandon current path, get the health pickup immediately
 					Path.Empty();
 				}
+
+				//if AI dont have bullet left, and health is above 40%, Then Reload
+				else if (bIsBulletEmpty && HealthComponent->HealthPercentageRemaining() >= 40.0f)
+				{
+					CurrentAgentState = AgentState::Reload;
+					//Abandon current path, get the weapon pickup immediately
+					Path.Empty();
+				}
+
+					
 			}
 
 			//In Engage State
@@ -105,7 +115,7 @@ void AEnemyCharacter::Tick(float DeltaTime)
 				AgentEngage();
 
 				//if AI can not see an Enemy, and the health is above 40%. Then Partrol (Search for Enemy)
-				if (!bCanSeePlayer && HealthComponent->HealthPercentageRemaining() >= 40.0f)
+				if (!bCanSeePlayer && HealthComponent->HealthPercentageRemaining() >= 40.0f && !bIsBulletEmpty)
 				{
 					CurrentAgentState = AgentState::PATROL;
 					//Do not abandon current path, if the AI lost the enemy in sight, follow the path to the end to search for enemy
@@ -118,6 +128,15 @@ void AEnemyCharacter::Tick(float DeltaTime)
 					//Abandon current path, quit engage and evade immediately
 					Path.Empty();
 				}
+
+				//if AI run out of bullet in the engage state, 
+				else if (bIsBulletEmpty)
+				{
+					CurrentAgentState = AgentState::Reload;
+					Path.Empty();
+				}
+
+
 			}
 
 			//In Evade State
@@ -155,103 +174,79 @@ void AEnemyCharacter::Tick(float DeltaTime)
 			{
 				AgentHeal();
 
-				//If AI get the healthpickup and can see an Enemy. Then Re-Engage
+				//If health is above 40% and can see an Enemy. Then Re-Engage
 				if (bCanSeePlayer && HealthComponent->HealthPercentageRemaining() >= 40.0f)
 				{
 					CurrentAgentState = AgentState::ENGAGE;
+					//Abandon current path, engage immediately
 					Path.Empty();
 				}
 
-				//If AI get the healthpickup and can not see an Enemy. Then Patrol (search for player)
+				//If health is above 40% and can not see an Enemy. Then Patrol (search for Enemy)
 				else if (!bCanSeePlayer && HealthComponent->HealthPercentageRemaining() >= 40.0f)
 				{
 					CurrentAgentState = AgentState::PATROL;
+					//Abandon current path
 					Path.Empty();
 				}
 
-				//If AI didnt get the healthpickup, and can see an Enemy. Then Evade
+				//If can not see a health pickup (health pickup is taken by someone else), health is below 40% and can see an Enemy. Then Evade
 				else if (!bCanSeeHealthPickup && HealthComponent->HealthPercentageRemaining() < 40.0f && bCanSeePlayer)
 				{
 					CurrentAgentState = AgentState::EVADE;
+					//Abandon current path, evade immediately
 					Path.Empty();
 				}
 
-				//If AI didnt get the healthpickup, and can not see an Enemy. Then Patrol (search for healthpickup)
+				//If AI can not see a health pickup (health pickup is taken by someone else), health is below 40%, and can not see an Enemy. Then Patrol (search for healthpickup)
 				else if (!bCanSeeHealthPickup && HealthComponent->HealthPercentageRemaining() < 40.0f && !bCanSeePlayer)
 				{
 					CurrentAgentState = AgentState::PATROL;
+					//Abandon current path
 					Path.Empty();
 				}
 			}
-			/*
-			else if (CurrentAgentState == AgentState::CHASE)
+
+			//In Reload State
+			else if (CurrentAgentState == AgentState::Reload)
 			{
-				AgentChase();
-				if (bCanSeePlayer)
+				AgentReload();
+
+
+				// if AI get the weapon pickup, health is above 40% and can see an enemy. then re-engage
+				if (!bIsBulletEmpty && HealthComponent->HealthPercentageRemaining() >= 40.0f && bCanSeePlayer)
 				{
 					CurrentAgentState = AgentState::ENGAGE;
+					//abandon current path, engage immediately
 					Path.Empty();
 				}
 
-
-				else if (!bCanSeePlayer)
+				// if AI get the weapon pickup, health is above 40% and can not see an enemy. then patrol (search for enemy)
+				else if (!bIsBulletEmpty && HealthComponent->HealthPercentageRemaining() >= 40.0f && !bCanSeePlayer)
 				{
 					CurrentAgentState = AgentState::PATROL;
-				}
-
-
-				else if (bCanSeePlayer && HealthComponent->HealthPercentageRemaining() < 40.0f)
-				{
-					CurrentAgentState = AgentState::EVADE;
+					//abandon current path
 					Path.Empty();
 				}
-			}
-			*/
 
-			/*
-			else if (CurrentAgentState == AgentState::CHECK)
-			{
-				AgentCheck();
-
-				if (bCanSeeActor && HealthComponent->HealthPercentageRemaining() < 40.0f)
+				// if AI's health is below 40%  and can see an enemy. then evade (situation like ai got damaged during the movement)
+				else if (HealthComponent->HealthPercentageRemaining() < 40.0f && bCanSeePlayer)
 				{
 					CurrentAgentState = AgentState::EVADE;
 					Path.Empty();
 				}
 
-				if (!bCanSeeActor && HealthComponent->HealthPercentageRemaining() < 40.0f && bCanHeal)
+				// if AI's health is below 40% and can not see an enemy. then patrol (situation like ai got damage from the back, and can not see an enemy)
+				else if (HealthComponent->HealthPercentageRemaining() < 40.0f && !bCanSeePlayer)
 				{
-					CurrentAgentState = AgentState::HEAL;
-				}
-			}
-
-			else if (CurrentAgentState == AgentState::HEAL)
-			{
-				AgentHeal();
-
-				if (HealthComponent->HealthPercentageRemaining() < 40.0f && bCanSeeActor)
-				{
-					bCanHeal = false;
-					CurrentAgentState = AgentState::EVADE;
-				}
-
-				else if (HealthComponent->HealthPercentageRemaining() >= 40.0f && bCanSeeActor)
-				{
-					bCanHeal = false;
-					CurrentAgentState = AgentState::ENGAGE;
-				}
-
-				else if (HealthComponent->HealthPercentageRemaining() >= 40.0f && !bCanSeeActor)
-				{
-					bCanHeal = false;
 					CurrentAgentState = AgentState::PATROL;
+					Path.Empty();
 				}
-			}
-			*/
 
+			}
 			MoveAlongPath();
-			//Reload();
 		}
+
 	}
 }
 
@@ -264,20 +259,13 @@ void AEnemyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComp
 
 void AEnemyCharacter::AgentPatrol()
 {
-	UE_LOG(LogTemp, Warning, TEXT("Path Num in Patrol is : %d"), Path.Num());
 	if (Path.Num() == 0)
 	{
 		if (Manager)
-		{
-			UE_LOG(LogTemp, Warning, TEXT("Manager was found in Patrol"));
-			UE_LOG(LogTemp, Warning, TEXT("Enter Patrol"));
+		{	
 			Path = Manager->GeneratePath(CurrentNode, Manager->AllNodes[FMath::RandRange(0, Manager->AllNodes.Num() - 1)]);
-			UE_LOG(LogTemp, Warning, TEXT("Enter Patrol1"));
 		}
-		else
-		{
-			UE_LOG(LogTemp, Warning, TEXT("No manager found in Patrol"));
-		}
+
 	}
 }
 
@@ -288,9 +276,9 @@ void AEnemyCharacter::AgentEngage()
 		FVector FireDirection = DetectedPlayer->GetActorLocation() - GetActorLocation();
 		Fire(FireDirection);
 	}
+
 	if (Path.Num() == 0 && DetectedPlayer)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Enter Engage"));
 		ANavigationNode* NearestNode = Manager->FindNearestNode(DetectedPlayer->GetActorLocation());
 		Path = Manager->GeneratePath(CurrentNode, NearestNode);
 	}
@@ -300,7 +288,6 @@ void AEnemyCharacter::AgentEvade()
 {
 	if (DetectedPlayer && bCanSeePlayer)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Enter Evade"));
 		ANavigationNode* FurthestNode = Manager->FindFurthestNode(DetectedPlayer->GetActorLocation());
 		Path = Manager->GeneratePath(CurrentNode, FurthestNode);
 	}
@@ -308,57 +295,27 @@ void AEnemyCharacter::AgentEvade()
 
 void AEnemyCharacter::AgentHeal()
 {
-	if (DetectedHealthPickup && bCanSeeHealthPickup && Path.Num() == 0)
+	if (DetectedHealthPickup && bCanSeeHealthPickup)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Enter Heal"));
 		ANavigationNode* NearestNode = Manager->FindNearestNode(DetectedHealthPickup->GetActorLocation());
 		Path = Manager->GeneratePath(CurrentNode, NearestNode);
 	}
 }
 
-void AEnemyCharacter::AgentChase()
+void AEnemyCharacter::AgentReload()
 {
-    //Once the AI cant see the player, it will record the player's last seen location and chase to that location.
-	
-		ANavigationNode* NearestNode = Manager->FindNearestNode(PlayerLocation);
+	if (!bCanSeeWeaponPickup)
+	{
+		Path = Manager->GeneratePath(CurrentNode, Manager->AllNodes[FMath::RandRange(0, Manager->AllNodes.Num() - 1)]);
+	}
+
+	if (DetectedWeaponPickup && bCanSeeWeaponPickup)
+	{
+		ANavigationNode* NearestNode = Manager->FindNearestNode(DetectedWeaponPickup->GetActorLocation());
 		Path = Manager->GeneratePath(CurrentNode, NearestNode);
-
+	}
 }
 
-/*
-void AEnemyCharacter::AgentCheck()
-{
-
-		FRotator Current = GetActorRotation();
-
-		float value = 180.0f;
-
-		FRotator Target = Current;
-		Target.Yaw += value;
-		SetActorRotation(FMath::RInterpTo(Current, Target, GetWorld()->GetDeltaSeconds(), 2.0f));
-
-		if (DoOnce)
-		{
-			DoOnce = false;
-			GetWorldTimerManager().SetTimer(SpinTimerHandle, this, &AEnemyCharacter::SetCanHealToTrue, 1.0f, false, 3.0f);
-		}
-		
-		if (bCanSeeActor)
-		{
-			GetWorldTimerManager().ClearTimer(SpinTimerHandle);
-		}
-
-}
-
-*/
-/*
-void AEnemyCharacter::AgentHeal()
-{
-	HealthComponent->CurrentHealth += GetWorld()->GetDeltaSeconds() * 2;
-	GetWorldTimerManager().ClearTimer(SpinTimerHandle);
-}
-
-*/
 
 //As the player's GenericTeamId is set to 1, which is considered as the enemy of AI. 
 //Thus, the AI will react to the player.
@@ -367,7 +324,7 @@ void AEnemyCharacter::SensePlayer(AActor* ActorSensed, FAIStimulus Stimulus)
 	//Cast to the IGenericTeamAgentInterface using ActorSensed (Player) as parameter
 		if (IGenericTeamAgentInterface* TeamAgentInterface = Cast<IGenericTeamAgentInterface>(ActorSensed))
 		{
-	        //When sensed Player
+	        //When sensed actor's TeamId = 1, indicates thats an Enemy
 			if (TeamAgentInterface->GetGenericTeamId() == 1)
 			{
 				if (Stimulus.WasSuccessfullySensed())
@@ -386,11 +343,13 @@ void AEnemyCharacter::SensePlayer(AActor* ActorSensed, FAIStimulus Stimulus)
 		}
 }
 
-void AEnemyCharacter::SenseHealthPickUp(AActor* ActorSensed, FAIStimulus Stimulus)
+//The health pickup's GenericTeamId is set to 2, which is the enemy of AI.
+//Thus, the AI will react to the health pickup, different to player 
+void AEnemyCharacter::SenseHealthPickup(AActor* ActorSensed, FAIStimulus Stimulus)
 {
 	if (IGenericTeamAgentInterface* TeamAgentInterface = Cast<IGenericTeamAgentInterface>(ActorSensed))
 	{
-		//When sensed Player
+		//When sensed actor's TeamId = 2, indicates thats a health pickup
 		if (TeamAgentInterface->GetGenericTeamId() == 2)
 		{
 			if (Stimulus.WasSuccessfullySensed())
@@ -408,18 +367,31 @@ void AEnemyCharacter::SenseHealthPickUp(AActor* ActorSensed, FAIStimulus Stimulu
 	}
 }
 
-void AEnemyCharacter::Reload()
+//The Weapon Pickup's GenericTeamId is set to 3
+void AEnemyCharacter::SenseWeaponPickup(AActor* ActorSensed, FAIStimulus Stimulus)
 {
-	BlueprintReload();
+	if (IGenericTeamAgentInterface* TeamAgentInterface = Cast<IGenericTeamAgentInterface>(ActorSensed))
+	{
+		//When sensed actor's TeamId = 3, indicates thats a Weapon pickup
+		if (TeamAgentInterface->GetGenericTeamId() == 3)
+		{
+			if (Stimulus.WasSuccessfullySensed())
+			{
+				DetectedWeaponPickup = ActorSensed;
+				bCanSeeWeaponPickup = true;
+			}
+			else
+			{
+				bCanSeeWeaponPickup = false;
+			}
+		}
+	}
 }
 
-
-/*
-void AEnemyCharacter::SetCanHealToTrue()
-{
-	bCanHeal = true;
-}
-*/
+//void AEnemyCharacter::Reload()
+//{
+	//BlueprintReload();
+//}
 
 
 void AEnemyCharacter::MoveAlongPath()
@@ -429,7 +401,7 @@ void AEnemyCharacter::MoveAlongPath()
 	{
 		CurrentNode = Path.Pop();
 	}
-	else if (!(GetActorLocation() - CurrentNode->GetActorLocation()).IsNearlyZero(PathfindingNodeAccuracy))
+	else if (!(GetActorLocation() - CurrentNode->GetActorLocation()).IsNearlyZero(PickupAccuracy))
 	{
 		AddMovementInput(CurrentNode->GetActorLocation() - GetActorLocation());
 	}
