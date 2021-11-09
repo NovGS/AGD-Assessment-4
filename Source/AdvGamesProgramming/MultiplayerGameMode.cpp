@@ -12,6 +12,7 @@
 #include "PlayerHUD.h"
 #include "PlayerCharacter.h"
 #include "AIManager.h"
+#include "GameFramework/PlayerController.h"
 
 void AMultiplayerGameMode::InitGame(const FString& MapName, const FString& Options, FString& ErrorMessages)
 {
@@ -61,7 +62,7 @@ void AMultiplayerGameMode::InitGame(const FString& MapName, const FString& Optio
 
 	if (ProceduralMap && AIManager)
 	{
-		AIManager->Init(EnemyCharacterClass, NUM_AI);
+		AIManager->Init(EnemyCharacterClass, NUM_AI, ProceduralMap->BlueSpawn, ProceduralMap->RedSpawn);
 		
 		/*static ConstructorHelpers::FObjectFinder<UBlueprint> EnemyCharacterBlueprint(TEXT("/Game/Blueprints/EnemyCharacter/Blueprints/EnemyCharacterBlueprint"));
 		EnemyCharacterClass = (UClass*)EnemyCharacterBlueprint.Object->GeneratedClass;*/
@@ -78,7 +79,22 @@ void AMultiplayerGameMode::InitGame(const FString& MapName, const FString& Optio
 		}*/
 	}
 
+	PlayerID = 0;
+
 }
+
+void AMultiplayerGameMode::HandleStartingNewPlayer_Implementation(APlayerController* NewPlayer)
+{
+	UE_LOG(LogTemp, Warning, TEXT("In HandleStartingNewPlayer"));
+
+	APlayerCharacter* Character = Cast<APlayerCharacter>(NewPlayer->GetPawn());
+	if (Character)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Player Character Found"));
+	}
+}
+
+
 
 void AMultiplayerGameMode::Respawn(AController* Controller)
 {
@@ -142,3 +158,12 @@ void AMultiplayerGameMode::TriggerRespawn(AController* Controller)
 		}
 	}
 }
+
+int32 AMultiplayerGameMode::GetAndIncrementPlayerID()
+{
+	int32 OldPlayerID = PlayerID;
+	PlayerID = (PlayerID == 0) ? 1 : 0;
+	return OldPlayerID;
+}
+
+

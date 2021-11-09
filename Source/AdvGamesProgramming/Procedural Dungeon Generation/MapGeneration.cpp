@@ -6,6 +6,8 @@
 #include "../NavigationNode.h"
 #include "../EnemyCharacter.h"
 #include "EngineUtils.h"
+#include "GameFramework/PlayerStart.h"
+#include "Kismet/KismetMathLibrary.h"
 
 // Sets default values
 AMapGeneration::AMapGeneration()
@@ -35,6 +37,7 @@ void AMapGeneration::BeginPlay()
 	Super::BeginPlay();
 }
 
+// Allows map to be generated upon ticking RegenerateMap in the editor
 void AMapGeneration::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
@@ -49,7 +52,6 @@ void AMapGeneration::Tick(float DeltaTime)
 		GenerateNodes();
 		ConnectNodes();
 		SpawnTeams();
-		SpawnItems();
 
 		bRegenerateMap = false;
 	}
@@ -60,6 +62,7 @@ bool AMapGeneration::ShouldTickIfViewportsOnly() const
 	return true;
 }
 
+// Generates the map to be spawned
 void AMapGeneration::GenerateLevel()
 {
 	int32 CurrentRoomIndex = 0;
@@ -812,6 +815,7 @@ void AMapGeneration::AddRoomToRooms(Room RoomToAdd, int32 RoomIndex)
 	}
 }
 
+// Generate nodes on map
 void AMapGeneration::GenerateNodes()
 {
 	for (auto It = Rooms.CreateIterator(); It; ++It)
@@ -827,10 +831,15 @@ void AMapGeneration::GenerateNodes()
 	}
 }
 
+/*	Connect nodes room by room, and only connecting the W, NW, N and NE directions
+	This will result in every node being connected in all 8 directions
+	This also connects nodes through doors */
 void AMapGeneration::ConnectNodes()
 {
+	// Iterate through rooms on the map
 	for (auto It = Rooms.CreateIterator(); It; ++It)
 	{
+		// Iterate through every node in the room
 		for (int X = 0; X < It->RoomSize.X; X++)
 		{
 			for (int Y = 0; Y < It->RoomSize.Y; Y++)
@@ -842,6 +851,7 @@ void AMapGeneration::ConnectNodes()
 				}
 				else
 				{
+					// Check what construction is to the West of the current tile
 					FVector CurrentTile = FVector(X + It->CornerTiles[0].X, Y + It->CornerTiles[0].Y, It->CornerTiles[0].Z);
 					ERoomConstructionType* Ptr = It->WallTiles.Find(CurrentTile);
 					if (Ptr == nullptr)
@@ -860,13 +870,16 @@ void AMapGeneration::ConnectNodes()
 						}
 					}
 
+					// If doorway is West of the current tile, connect it
 					if (Ptr != nullptr)
 					{
 						if (*Ptr == ERoomConstructionType::DOORWAY)
 						{
+							// Find room to the West of the current tile
 							int32* ConnectedRoomIndex = ConnectedTiles.Find(CurrentTile + FVector::LeftVector);
 							Room* ConnectedRoom = &Rooms[*ConnectedRoomIndex];
 
+							// Find index of connected tile in the connected room nodes
 							int32 NodeX = (CurrentTile + FVector::LeftVector).X - ConnectedRoom->CornerTiles[0].X;
 							int32 NodeY = (CurrentTile + FVector::LeftVector).Y - ConnectedRoom->CornerTiles[0].Y;
 
@@ -888,6 +901,7 @@ void AMapGeneration::ConnectNodes()
 				}
 				else
 				{
+					// Check what construction is to the North of the current tile
 					FVector CurrentTile = FVector(X + It->CornerTiles[0].X, Y + It->CornerTiles[0].Y, It->CornerTiles[0].Z);
 					ERoomConstructionType* Ptr = It->WallTiles.Find(CurrentTile);
 					if (Ptr == nullptr)
@@ -906,13 +920,16 @@ void AMapGeneration::ConnectNodes()
 						}
 					}
 
+					// If doorway is North of the current tile, connect it
 					if (Ptr != nullptr)
 					{
 						if (*Ptr == ERoomConstructionType::DOORWAY)
 						{
+							// Find room to the North of the current tile
 							int32* ConnectedRoomIndex = ConnectedTiles.Find(CurrentTile + FVector::ForwardVector);
 							Room* ConnectedRoom = &Rooms[*ConnectedRoomIndex];
 
+							// Find index of connected tile in the connected room nodes
 							int32 NodeX = (CurrentTile + FVector::ForwardVector).X - ConnectedRoom->CornerTiles[0].X;
 							int32 NodeY = (CurrentTile + FVector::ForwardVector).Y - ConnectedRoom->CornerTiles[0].Y;
 
@@ -931,6 +948,7 @@ void AMapGeneration::ConnectNodes()
 	}
 }
 
+// Add connection between given nodes
 void AMapGeneration::AddConnection(ANavigationNode* FromNode, ANavigationNode* ToNode)
 {
 	FVector DirectionVector = ToNode->GetActorLocation() - FromNode->GetActorLocation();
@@ -943,10 +961,13 @@ void AMapGeneration::AddConnection(ANavigationNode* FromNode, ANavigationNode* T
 		ToNode->ConnectedNodes.Add(FromNode);
 }
 
+// Clears map for regeneration
 void AMapGeneration::ClearMap()
 {
 	Rooms.Empty();
 	ConnectedTiles.Empty();
+	BlueSpawn.Empty();
+	RedSpawn.Empty();
 
 	for (TActorIterator<ARoomConstruction> It(GetWorld()); It; ++It)
 	{
@@ -958,32 +979,114 @@ void AMapGeneration::ClearMap()
 		It->Destroy();
 	}
 
+	for (TActorIterator<APlayerStart> It(GetWorld()); It; ++It)
+	{
+		It->Destroy();
+	}
+
 	bNoValidRooms = false;
 }
 
+// Spawns player starts and fills spawn nodes for AIManager to use when game starts
 void AMapGeneration::SpawnTeams()
+{
+	// Find opposite spawn rooms
+	TArray<Room*> BlueSpawnRooms;
+	TArray<Room*> RedSpawnRooms;
+
+	FindSpawnRooms(&BlueSpawnRooms, &RedSpawnRooms);
+
+	// Select one random room
+	Room* RoomToSpawnBlue = BlueSpawnRooms[FMath::RandRange(0, BlueSpawnRooms.Num() - 1)];
+	Room* RoomToSpawnRed = RedSpawnRooms[FMath::RandRange(0, RedSpawnRooms.Num() - 1)];
+
+	// Generate and randomize available spawn vectors for chosen room
+	TArray<ANavigationNode*> SpawnNodesBlue = GenerateSpawnNodes(RoomToSpawnBlue);
+	TArray<ANavigationNode*> SpawnNodesRed = GenerateSpawnNodes(RoomToSpawnRed);
+
+	// Spawn PlayerStarts
+	// Choose random door to look at when spawning
+	FVector DoorToLookAtBlue = RandomDoorVector(RoomToSpawnBlue);
+	FVector DoorToLookAtRed = RandomDoorVector(RoomToSpawnRed);
+
+	APlayerStart* PlayerStartBlue = GetWorld()->SpawnActor<APlayerStart>(PlayerStartClass, SpawnNodesBlue[0]->GetActorLocation(), UKismetMathLibrary::FindLookAtRotation(SpawnNodesBlue[0]->GetActorLocation(), DoorToLookAtBlue));
+	PlayerStartBlue->PlayerStartTag = "Blue";
+
+	APlayerStart* PlayerStartRed = GetWorld()->SpawnActor<APlayerStart>(PlayerStartClass, SpawnNodesRed[0]->GetActorLocation(), UKismetMathLibrary::FindLookAtRotation(SpawnNodesRed[0]->GetActorLocation(), DoorToLookAtRed));
+	PlayerStartRed->PlayerStartTag = "Red";
+
+	// Add AI spawn points for AImanager
+	for (int i = 1; i < SpawnNodesBlue.Num(); i++)
+	{
+		BlueSpawn.Add(SpawnNodesBlue[i]);
+	}
+
+	for (int i = 1; i < SpawnNodesRed.Num(); i++)
+	{
+		RedSpawn.Add(SpawnNodesRed[i]);
+	}
+}
+
+// Generate and randomize available spawn vectors for chosen room
+TArray<ANavigationNode*> AMapGeneration::GenerateSpawnNodes(Room* SpawnRoom)
+{
+	TArray<ANavigationNode*> SpawnNodes;
+
+	UE_LOG(LogTemp, Warning, TEXT("RoomNodesNum: %d"), SpawnRoom->RoomNodes.Num());
+	for (int i = 0; i < SpawnRoom->RoomNodes.Num(); i++)
+	{
+		SpawnNodes.Add(SpawnRoom->RoomNodes[i]);
+	}
+
+	for (int i = 0; i < SpawnNodes.Num(); i++)
+	{
+		int RandIndex = FMath::RandRange(0, SpawnNodes.Num() - 1);
+		ANavigationNode* Temp = SpawnNodes[i];
+		SpawnNodes[i] = SpawnNodes[RandIndex];
+		SpawnNodes[RandIndex] = Temp;
+	}
+	UE_LOG(LogTemp, Warning, TEXT("SpawnNodes: %d"), SpawnNodes.Num());
+	return SpawnNodes;
+}
+
+// Choose a random door in room to look at when spawning
+FVector AMapGeneration::RandomDoorVector(Room* SpawnRoom)
+{
+	TArray<FVector*> Doors;
+
+	for (auto It = SpawnRoom->CornerTilesMap.CreateIterator(); It; ++It)
+	{
+		if (It->Value[0] == ERoomConstructionType::DOORWAY || It->Value[1] == ERoomConstructionType::DOORWAY)
+		{
+			Doors.Add(&It->Key);
+		}
+	}
+
+	for (auto It = SpawnRoom->WallTiles.CreateIterator(); It; ++It)
+	{
+		if (It->Value == ERoomConstructionType::DOORWAY)
+		{
+			Doors.Add(&It->Key);
+		}
+	}
+
+	return *Doors[FMath::RandRange(0, Doors.Num()-1)];
+}
+
+// Find rooms to spawn teams
+void AMapGeneration::FindSpawnRooms(TArray<Room*>* BlueSpawnRooms, TArray<Room*>* RedSpawnRooms)
 {
 	int32 MinX = 0;
 	int32 MaxX = 0;
 	int32 MinY = 0;
 	int32 MaxY = 0;
 
-	for (auto It = ConnectedTiles.CreateIterator(); It; ++It)
-	{
-		MinX = (It->Key.X < MinX) ? It->Key.X : MinX;
-		MaxX = (It->Key.X > MaxX) ? It->Key.X : MaxX;
-		MinY = (It->Key.Y < MinY) ? It->Key.Y : MinY;
-		MaxY = (It->Key.Y > MaxY) ? It->Key.Y : MaxY;
-	}
-
-	TArray<Room*> RoomsSpawnBlue;
-	TArray<Room*> RoomsSpawnRed;
+	FindLimitsOfMap(&MinX, &MaxX, &MinY, &MaxY);
 
 	UE_LOG(LogTemp, Warning, TEXT("MinX: %d"), MinX);
 	UE_LOG(LogTemp, Warning, TEXT("MaxX: %d"), MaxX);
 	UE_LOG(LogTemp, Warning, TEXT("MinY: %d"), MinY);
 	UE_LOG(LogTemp, Warning, TEXT("MaxY: %d"), MaxY);
-	UE_LOG(LogTemp, Warning, TEXT("I'm not spawning anything tho"));
 
 	if (MaxX - MinX >= MaxY - MinY)
 	{
@@ -991,20 +1094,20 @@ void AMapGeneration::SpawnTeams()
 		{
 			if (It->Key.X == MinX)
 			{
-				if (!RoomsSpawnBlue.Contains(&Rooms[It->Value]))
+				if (!BlueSpawnRooms->Contains(&Rooms[It->Value]))
 				{
-					RoomsSpawnBlue.Add(&Rooms[It->Value]);
+					BlueSpawnRooms->Add(&Rooms[It->Value]);
 				}
 			}
 
 			if (It->Key.X == MaxX)
 			{
-				if (!RoomsSpawnRed.Contains(&Rooms[It->Value]))
+				if (!RedSpawnRooms->Contains(&Rooms[It->Value]))
 				{
-					RoomsSpawnRed.Add(&Rooms[It->Value]);
+					RedSpawnRooms->Add(&Rooms[It->Value]);
 				}
 			}
-		}	
+		}
 	}
 	else
 	{
@@ -1012,73 +1115,35 @@ void AMapGeneration::SpawnTeams()
 		{
 			if (It->Key.Y == MinY)
 			{
-				if (!RoomsSpawnBlue.Contains(&Rooms[It->Value]))
+				if (!BlueSpawnRooms->Contains(&Rooms[It->Value]))
 				{
-					RoomsSpawnBlue.Add(&Rooms[It->Value]);
+					BlueSpawnRooms->Add(&Rooms[It->Value]);
 				}
 			}
 
 			if (It->Key.Y == MaxY)
 			{
-				if (!RoomsSpawnRed.Contains(&Rooms[It->Value]))
+				if (!RedSpawnRooms->Contains(&Rooms[It->Value]))
 				{
-					RoomsSpawnRed.Add(&Rooms[It->Value]);
+					RedSpawnRooms->Add(&Rooms[It->Value]);
 				}
 			}
 		}
 	}
 
-	int32 RandRoomIndexBlue = FMath::RandRange(0, RoomsSpawnBlue.Num() - 1);
-	Room* RoomToSpawnBlue = RoomsSpawnBlue[RandRoomIndexBlue];
-	TArray<int32> NodeIndexesBlue;
-	for (int i = 0; i < RoomToSpawnBlue->RoomNodes.Num(); i++)
-	{
-		NodeIndexesBlue.Add(i);
-	}
-
-	for (int i = 0; i < NodeIndexesBlue.Num(); i++)
-	{
-		int RandIndex = FMath::RandRange(0, NodeIndexesBlue.Num() - 1);
-		int Temp = NodeIndexesBlue[i];
-		NodeIndexesBlue[i] = NodeIndexesBlue[RandIndex];
-		NodeIndexesBlue[RandIndex] = Temp;
-	}
-
-	for (int i = 0; i < 3; i++)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Spawning Blue at: %s"), *RoomToSpawnBlue->RoomNodes[NodeIndexesBlue[i]]->GetActorLocation().ToString());
-		//AEnemyCharacter* SpawnedEnemy = GetWorld()->SpawnActor<AEnemyCharacter>(AgentToSpawn, RoomToSpawnBlue->RoomNodes[NodeIndexesBlue[i]]->GetActorLocation(), RoomToSpawnBlue->RoomNodes[NodeIndexesBlue[i]]->GetActorRotation());
-	}
-
-	int32 RandRoomIndexRed = FMath::RandRange(0, RoomsSpawnRed.Num() - 1);
-
-	Room* RoomToSpawnRed = RoomsSpawnRed[RandRoomIndexRed];
-	TArray<int32> NodeIndexesRed;
-	for (int i = 0; i < RoomToSpawnRed->RoomNodes.Num(); i++)
-	{
-		NodeIndexesRed.Add(i);
-	}
-
-	for (int i = 0; i < NodeIndexesRed.Num(); i++)
-	{
-		int RandIndex = FMath::RandRange(0, NodeIndexesRed.Num() - 1);
-		int Temp = NodeIndexesRed[i];
-		NodeIndexesRed[i] = NodeIndexesRed[RandIndex];
-		NodeIndexesRed[RandIndex] = Temp;
-	}
-
-	for (int i = 0; i < 3; i++)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Spawning Red at: %s"), *RoomToSpawnRed->RoomNodes[NodeIndexesRed[i]]->GetActorLocation().ToString());
-		//AEnemyCharacter* SpawnedEnemy = GetWorld()->SpawnActor<AEnemyCharacter>(AgentToSpawn, RoomToSpawnBlue->RoomNodes[NodeIndexesBlue[i]]->GetActorLocation(), RoomToSpawnBlue->RoomNodes[NodeIndexesBlue[i]]->GetActorRotation());
-	}
+	UE_LOG(LogTemp, Warning, TEXT("1BlueRoomNum: %d"), BlueSpawnRooms->Num());
+	UE_LOG(LogTemp, Warning, TEXT("1RedRoomNum: %d"), RedSpawnRooms->Num());
 }
 
-void AMapGeneration::SpawnItems()
+// Find X and Y limits of the generated map
+void AMapGeneration::FindLimitsOfMap(int32* MinX, int32* MaxX, int32* MinY, int32* MaxY)
 {
-
-	UE_LOG(LogTemp, Warning, TEXT("Spawning Items"));
+	for (auto It = ConnectedTiles.CreateIterator(); It; ++It)
+	{
+		*MinX = (It->Key.X < *MinX) ? It->Key.X : *MinX;
+		*MaxX = (It->Key.X > *MaxX) ? It->Key.X : *MaxX;
+		*MinY = (It->Key.Y < *MinY) ? It->Key.Y : *MinY;
+		*MaxY = (It->Key.Y > *MaxY) ? It->Key.Y : *MaxY;
+	}
 }
-
-
 

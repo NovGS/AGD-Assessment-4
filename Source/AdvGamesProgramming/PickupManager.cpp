@@ -37,6 +37,10 @@ void APickupManager::SpawnWeaponPickup()
 void APickupManager::BeginPlay()
 {
 	Super::BeginPlay();
+	for (int i = 0; i < (PossibleSpawnLocations.Num()/50); i++)
+	{
+		SpawnWeaponPickup();
+	}
 	GetWorldTimerManager().SetTimer(WeaponSpawnTimer, this, &APickupManager::SpawnWeaponPickup, SpawnInterval, true, 0.0f);
 }
 
