@@ -24,6 +24,8 @@ private:
 	class APickupManager* PickupManager;
 	class AAIManager* AIManager;
 
+	int32 PlayerID;
+
 public:
 	UPROPERTY(EditDefaultsOnly)
 	TSubclassOf<class APickup> WeaponPickupClass;
@@ -32,7 +34,10 @@ public:
 	TSubclassOf<class AEnemyCharacter> EnemyCharacterClass;
 
 	void InitGame(const FString& MapName, const FString& Options, FString& ErrorMessages) override;
+	void HandleStartingNewPlayer_Implementation(APlayerController* NewPlayer) override;
 	void Respawn(AController* Controller);
 	UFUNCTION()
 	void TriggerRespawn(AController* Controller);
+
+	int32 GetAndIncrementPlayerID();
 };

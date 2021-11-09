@@ -5,6 +5,10 @@
 #include "EngineUtils.h"
 #include "NavigationNode.h"
 #include "EnemyCharacter.h"
+#include "Materials/MaterialInstance.h"
+#include "UObject/ConstructorHelpers.h"
+#include "Components/SkeletalMeshComponent.h"
+#include "Components/MeshComponent.h"
 
 // Sets default values
 AAIManager::AAIManager()
@@ -13,6 +17,8 @@ AAIManager::AAIManager()
 	PrimaryActorTick.bCanEverTick = true;
 
 	AllowedAngle = 0.4f;
+
+	UE_LOG(LogTemp, Warning, TEXT("Setting up AIManager"));
 }
 
 // Called when the game starts or when spawned
@@ -21,10 +27,12 @@ void AAIManager::BeginPlay()
 	Super::BeginPlay();
 }
 
-void AAIManager::Init(TSubclassOf<AEnemyCharacter> EnemyCharacterClassArg, int32 NumAIArg)
+void AAIManager::Init(TSubclassOf<AEnemyCharacter> EnemyCharacterClassArg, int32 NumAIArg, TArray<ANavigationNode*> BlueSpawnArg, TArray<ANavigationNode*> RedSpawnArg)
 {
 	this->NumAI = NumAIArg;
 	this->EnemyCharacterClass = EnemyCharacterClassArg;
+	this->BlueSpawn = BlueSpawnArg;
+	this->RedSpawn = RedSpawnArg;
 
 	if (AllNodes.Num() == 0)
 	{
@@ -120,8 +128,6 @@ TArray<ANavigationNode*> AAIManager::ReconstructPath(ANavigationNode* StartNode,
 		Path.Add(CurrentNode);
 		CurrentNode = CurrentNode->CameFrom;
 	}
-	UE_LOG(LogTemp, Warning, TEXT("Start Node: %s"), *StartNode->GetActorLocation().ToString());
-	UE_LOG(LogTemp, Warning, TEXT("End Node: %s"), *EndNode->GetActorLocation().ToString());
 	return Path;
 }
 
@@ -136,23 +142,35 @@ void AAIManager::PopulateNodes()
 void AAIManager::CreateAgents()
 {
 	UE_LOG(LogTemp, Warning, TEXT("Creating Enemies"));
+	
 	if (AllNodes.Num() > 0)
 	{
-		for (int32 i = 0; i < NumAI; i++)
+		int32 BlueAISpawned = 0;
+		while (BlueAISpawned < NumAI)
 		{
-			// Get a random node index
-			int32 NodeIndex = FMath::RandRange(0, AllNodes.Num() - 1);
-			AEnemyCharacter* SpawnedEnemy = GetWorld()->SpawnActor<AEnemyCharacter>(EnemyCharacterClass, AllNodes[NodeIndex]->GetActorLocation(), AllNodes[NodeIndex]->GetActorRotation());
-			SpawnedEnemy->Manager = this;
-			if (SpawnedEnemy->Manager == nullptr)
+			for (int i = 0; i < BlueSpawn.Num(); i++)
 			{
-				UE_LOG(LogTemp, Warning, TEXT("CreateAgents: AIManager is nullptr"));
+				if (BlueAISpawned == NumAI) { break; }
+				AEnemyCharacter* SpawnedEnemy = GetWorld()->SpawnActor<AEnemyCharacter>(EnemyCharacterClass, BlueSpawn[i]->GetActorLocation(), FRotator::ZeroRotator);
+				SpawnedEnemy->Manager = this;
+				SpawnedEnemy->TeamId = FGenericTeamId(0);
+				SpawnedEnemy->CurrentNode = BlueSpawn[i];
+				BlueAISpawned++;
 			}
-			else
+		}
+
+		int32 RedAISpawned = 0;
+		while (RedAISpawned < NumAI)
+		{
+			for (int i = 0; i < BlueSpawn.Num(); i++)
 			{
-				UE_LOG(LogTemp, Warning, TEXT("CreateAgents: AIManager exists"));
+				if (RedAISpawned == NumAI) { break; }
+				AEnemyCharacter* SpawnedEnemy = GetWorld()->SpawnActor<AEnemyCharacter>(EnemyCharacterClass, RedSpawn[i]->GetActorLocation(), FRotator::ZeroRotator);
+				SpawnedEnemy->Manager = this;
+				SpawnedEnemy->TeamId = FGenericTeamId(1);
+				SpawnedEnemy->CurrentNode = RedSpawn[i];
+				RedAISpawned++;
 			}
-			SpawnedEnemy->CurrentNode = AllNodes[NodeIndex];
 		}
 	}
 }

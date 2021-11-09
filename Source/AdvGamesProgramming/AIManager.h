@@ -21,18 +21,21 @@ protected:
 
 public:	
 
-	void Init(TSubclassOf<class AEnemyCharacter> EnemyCharacterClassArg, int32 NumAIArg);
+	void Init(TSubclassOf<class AEnemyCharacter> EnemyCharacterClassArg, int32 NumAIArg, TArray<class ANavigationNode*> BlueSpawnArg, TArray<ANavigationNode*> RedSpawnArg);
 
 	UPROPERTY(EditAnywhere, Category = "AI Properties")
 	int32 NumAI;
 	UPROPERTY(VisibleAnywhere, Category = "Navigation Nodes")
-	TArray<class ANavigationNode*> AllNodes;
+	TArray<ANavigationNode*> AllNodes;
 	UPROPERTY(VisibleAnywhere, Category = "Agents")
 	TArray<AEnemyCharacter*> AllAgents;
 	UPROPERTY(EditAnywhere, Category = "Agents")
 	TSubclassOf<AEnemyCharacter> AgentToSpawn;
 
 	TSubclassOf<AEnemyCharacter> EnemyCharacterClass;
+
+	TArray<ANavigationNode*> BlueSpawn;
+	TArray<ANavigationNode*> RedSpawn;
 
 	UPROPERTY(EditAnywhere)
 	float AllowedAngle;

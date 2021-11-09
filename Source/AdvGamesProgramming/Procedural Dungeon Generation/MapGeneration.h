@@ -68,6 +68,13 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Agents")
 		TSubclassOf<class AEnemyCharacter> AgentToSpawn;
 
+	UPROPERTY(EditAnywhere, Category = "Player Starts")
+		TSubclassOf<class APlayerStart> PlayerStartClass;
+	UPROPERTY(VisibleAnywhere, Category = "Player Starts")
+		TArray<ANavigationNode*> BlueSpawn;
+	UPROPERTY(VisibleAnywhere, Category = "Player Starts")
+		TArray<ANavigationNode*> RedSpawn;
+
 	// Array of all rooms in the level
 	TArray<Room> Rooms;
 
@@ -87,6 +94,9 @@ public:
 	void GenerateRoom(Room* RoomToGenerate);
 
 	void SpawnRoom(Room RoomToSpawn);
+
+	void FindSpawnRooms(TArray<Room*>* BlueSpawnRooms, TArray<Room*>* RedSpawnRooms);
+	void FindLimitsOfMap(int32* MinX, int32* MaxX, int32* MinY, int32* MaxY);
 
 private:
 
@@ -118,5 +128,6 @@ private:
 	void ClearMap();
 
 	void SpawnTeams();
-	void SpawnItems();
+	TArray<ANavigationNode*> GenerateSpawnNodes(Room* SpawnRoom);
+	FVector RandomDoorVector(Room* SpawnRoom);
 };

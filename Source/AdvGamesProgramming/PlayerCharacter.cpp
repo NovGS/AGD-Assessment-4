@@ -11,6 +11,10 @@
 #include "Engine/World.h"
 #include "PlayerHUD.h"
 #include "GameFramework/HUD.h"
+#include "Kismet/GameplayStatics.h"
+#include "MultiplayerGameMode.h"
+#include "EngineUtils.h"
+#include "GameFramework/PlayerStart.h"
 
 // Sets default values
 APlayerCharacter::APlayerCharacter()
@@ -26,8 +30,58 @@ APlayerCharacter::APlayerCharacter()
 
 	SprintMovementSpeed = GetCharacterMovement()->MaxWalkSpeed * SprintMultiplier;
 	NormalMovementSpeed = GetCharacterMovement()->MaxWalkSpeed;
+}
 
-	TeamId = FGenericTeamId(1);
+void APlayerCharacter::PostActorCreated()
+{
+	AGameModeBase* MultiGM = UGameplayStatics::GetGameMode(GetWorld());
+	
+	TArray<APlayerStart*> PlayerSpawns;
+
+	for (TActorIterator<APlayerStart> It(GetWorld()); It; ++It)
+	{
+		PlayerSpawns.Add(*It);
+	}
+
+	if (MultiGM != NULL)
+	{
+		int32 PlayerID = Cast<AMultiplayerGameMode>(MultiGM)->GetAndIncrementPlayerID();
+
+		TeamId = FGenericTeamId(PlayerID);
+
+		UE_LOG(LogTemp, Warning, TEXT("Player ID: %d"), PlayerID);
+
+		switch (TeamId.GetId())
+		{
+		case 0:
+			for (int i = 0; i < PlayerSpawns.Num(); i++)
+			{
+				if (PlayerSpawns[i]->PlayerStartTag == "Blue")
+				{
+					SetActorLocation(PlayerSpawns[i]->GetActorLocation());
+					UE_LOG(LogTemp, Warning, TEXT("Blue Player Location moved"));
+				}
+			}
+			break;
+		case 1:
+			for (int i = 0; i < PlayerSpawns.Num(); i++)
+			{
+				if (PlayerSpawns[i]->PlayerStartTag == "Red")
+				{
+					SetActorLocation(PlayerSpawns[i]->GetActorLocation());
+					UE_LOG(LogTemp, Warning, TEXT("Red Player Location moved"));
+				}
+			}
+			break;
+		default:
+			UE_LOG(LogTemp, Warning, TEXT("Player Start not found"));
+		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("MultiGM doesn't exist"));
+	}
+
 }
 
 // Called when the game starts or when spawned

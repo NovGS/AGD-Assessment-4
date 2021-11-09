@@ -18,6 +18,8 @@ public:
 	APlayerCharacter();
 
 protected:
+	virtual void PostActorCreated() override;
+	
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
