@@ -20,6 +20,7 @@ private:
 	const float HEALTH_PICKUP_LIFETIME = 30.0f;
 
 	TArray<FVector> PossibleSpawnLocations;
+	
 	TSubclassOf<class APickup> WeaponPickupClass;
 	float WeaponSpawnInterval;
 	FTimerHandle WeaponSpawnTimer;

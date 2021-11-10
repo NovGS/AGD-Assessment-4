@@ -65,9 +65,7 @@ public:
 	UPROPERTY(VisibleAnywhere, Category = "Navigation Nodes")
 		TArray<class ANavigationNode*> AllNodes;
 
-	UPROPERTY(EditAnywhere, Category = "Agents")
-		TSubclassOf<class AEnemyCharacter> AgentToSpawn;
-
+	// PlayerStart actors
 	UPROPERTY(EditAnywhere, Category = "Player Starts")
 		TSubclassOf<class APlayerStart> PlayerStartClass;
 	UPROPERTY(VisibleAnywhere, Category = "Player Starts")
@@ -78,7 +76,7 @@ public:
 	// Array of all rooms in the level
 	TArray<Room> Rooms;
 
-	// Map of all tiles which have been validated to allow for collisiion detection
+	// Map of all tiles which have been validated to allow for collision detection
 	UPROPERTY(VisibleAnywhere)
 	TMap<FVector, int32> ConnectedTiles;
 

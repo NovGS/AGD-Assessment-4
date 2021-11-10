@@ -18,13 +18,16 @@ class ADVGAMESPROGRAMMING_API AMultiplayerGameMode : public AGameMode
 private:
 	const float WEAPON_PICKUP_SPAWN_INTERVAL = 10.0f;
 	const float HEALTH_PICKUP_SPAWN_INTERVAL = 15.0f;
-	const int32 NUM_AI = 0;
+	
+	// Number of AI to spawn per team
+	const int32 NUM_AI = 2;
 
 	//class AProcedurallyGeneratedMap* ProceduralMap;
 	class AMapGeneration* ProceduralMap;
 	class APickupManager* PickupManager;
 	class AAIManager* AIManager;
 
+	// Tracks the playerID
 	int32 PlayerID;
 
 public:
@@ -38,7 +41,6 @@ public:
 	TSubclassOf<class AEnemyCharacter> EnemyCharacterClass;
 
 	void InitGame(const FString& MapName, const FString& Options, FString& ErrorMessages) override;
-	void HandleStartingNewPlayer_Implementation(APlayerController* NewPlayer) override;
 	void Respawn(AController* Controller);
 	UFUNCTION()
 	void TriggerRespawn(AController* Controller);

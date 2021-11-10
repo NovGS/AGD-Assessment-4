@@ -988,6 +988,9 @@ void AMapGeneration::ClearMap()
 }
 
 // Spawns player starts and fills spawn nodes for AIManager to use when game starts
+// Teams will be spawned at rooms in either MaxX and MinX values, or MaxY and MinY values
+// PlayerStart will be randomly chosen in this room
+// AI will be spawned in other nodes within that room */
 void AMapGeneration::SpawnTeams()
 {
 	// Find opposite spawn rooms

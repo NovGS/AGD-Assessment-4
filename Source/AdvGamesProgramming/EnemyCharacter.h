@@ -101,12 +101,15 @@ private:
 
 	virtual FGenericTeamId GetGenericTeamId() const override;
 
+	// Called when Material variable gets changed
 	UFUNCTION()
 	virtual void OnRep_SetMaterial();
 
+	// Replicated to allow AI mesh to change colours according to their TeamID
 	UPROPERTY(ReplicatedUsing = OnRep_SetMaterial)
 	UMaterialInstance* Material;
 
+	// Materials to change to
 	UMaterialInstance* RedMaterial;
 	UMaterialInstance* BlueMaterial;
 };

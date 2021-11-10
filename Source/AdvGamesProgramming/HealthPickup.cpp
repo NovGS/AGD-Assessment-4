@@ -11,6 +11,7 @@ AHealthPickup::AHealthPickup()
 {
 	TeamId = FGenericTeamId(2);
 
+	// Set boundingBo size to better suit the health pickup
 	PickupBoundingBox->SetWorldScale3D(FVector(1.0f, 1.0f, 1.0f));
 }
 
