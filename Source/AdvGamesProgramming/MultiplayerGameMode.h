@@ -17,7 +17,8 @@ class ADVGAMESPROGRAMMING_API AMultiplayerGameMode : public AGameMode
 
 private:
 	const float WEAPON_PICKUP_SPAWN_INTERVAL = 10.0f;
-	const int32 NUM_AI = 1;
+	const float HEALTH_PICKUP_SPAWN_INTERVAL = 15.0f;
+	const int32 NUM_AI = 0;
 
 	//class AProcedurallyGeneratedMap* ProceduralMap;
 	class AMapGeneration* ProceduralMap;
@@ -29,6 +30,9 @@ private:
 public:
 	UPROPERTY(EditDefaultsOnly)
 	TSubclassOf<class APickup> WeaponPickupClass;
+
+	UPROPERTY(EditDefaultsOnly)
+	TSubclassOf<class AHealthPickup> HealthPickupClass;
 
 	UPROPERTY(EditDefaultsOnly)
 	TSubclassOf<class AEnemyCharacter> EnemyCharacterClass;

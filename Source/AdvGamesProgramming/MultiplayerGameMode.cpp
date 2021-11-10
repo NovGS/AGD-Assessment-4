@@ -50,7 +50,7 @@ void AMultiplayerGameMode::InitGame(const FString& MapName, const FString& Optio
 		UE_LOG(LogTemp, Warning, TEXT("Vertices: %d"), Vertices.Num());
 		if (!Vertices.Num() == 0)
 		{
-			PickupManager->Init(Vertices, WeaponPickupClass, WEAPON_PICKUP_SPAWN_INTERVAL);
+			PickupManager->Init(Vertices, WeaponPickupClass, WEAPON_PICKUP_SPAWN_INTERVAL, HealthPickupClass, HEALTH_PICKUP_SPAWN_INTERVAL);
 		}
 	}
 
@@ -63,20 +63,6 @@ void AMultiplayerGameMode::InitGame(const FString& MapName, const FString& Optio
 	if (ProceduralMap && AIManager)
 	{
 		AIManager->Init(EnemyCharacterClass, NUM_AI, ProceduralMap->BlueSpawn, ProceduralMap->RedSpawn);
-		
-		/*static ConstructorHelpers::FObjectFinder<UBlueprint> EnemyCharacterBlueprint(TEXT("/Game/Blueprints/EnemyCharacter/Blueprints/EnemyCharacterBlueprint"));
-		EnemyCharacterClass = (UClass*)EnemyCharacterBlueprint.Object->GeneratedClass;*/
-
-		/*static ConstructorHelpers::FClassFinder<AEnemyCharacter> EnemyCharacterObject(TEXT("/Game/Blueprints/EnemyCharacter/Blueprints/EnemyCharacterBlueprint"));
-		EnemyCharacterClass = EnemyCharacterObject.Class;
-
-		GetWorld()->SpawnActor<AEnemyCharacter>(EnemyCharacterClass, FVector(1500, 900, 0), FRotator::ZeroRotator);*/
-
-		/*UE_LOG(LogTemp, Warning, TEXT("Vertices: %d"), Vertices.Num());
-		if (!Vertices.Num() == 0)
-		{
-			PickupManager->Init(Vertices, WeaponPickupClass, WEAPON_PICKUP_SPAWN_INTERVAL);
-		}*/
 	}
 
 	PlayerID = 0;

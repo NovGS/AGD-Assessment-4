@@ -16,14 +16,21 @@ class ADVGAMESPROGRAMMING_API APickupManager : public AActor
 
 private:
 
-	const float PICKUP_LIFETIME = 20.0f;
+	const float WEAPON_PICKUP_LIFETIME = 20.0f;
+	const float HEALTH_PICKUP_LIFETIME = 30.0f;
 
 	TArray<FVector> PossibleSpawnLocations;
 	TSubclassOf<class APickup> WeaponPickupClass;
-	float SpawnInterval;
+	float WeaponSpawnInterval;
 	FTimerHandle WeaponSpawnTimer;
 
 	void SpawnWeaponPickup();
+
+	TSubclassOf<class AHealthPickup> HealthPickupClass;
+	float HealthSpawnInterval;
+	FTimerHandle HealthSpawnTimer;
+
+	void SpawnHealthPickup();
 
 public:	
 
@@ -32,7 +39,7 @@ public:
 
 	void Init(const TArray<FVector>& PossibleSpawnLocationsArg, 
 				TSubclassOf<APickup> WeaponPickupClassArg, 
-				float SpawnIntervalArg);
+				float WeaponSpawnIntervalArg, TSubclassOf<AHealthPickup> HealthPickupClassArg, float HealthSpawnIntervalArg);
 
 protected:
 	// Called when the game starts or when spawned

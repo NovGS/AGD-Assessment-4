@@ -4,11 +4,14 @@
 #include "HealthPickup.h"
 #include "GameFramework/Actor.h"
 #include "HealthComponent.h"
+#include "Components/BoxComponent.h"
 
 //Set Default values
 AHealthPickup::AHealthPickup()
 {
 	TeamId = FGenericTeamId(2);
+
+	PickupBoundingBox->SetWorldScale3D(FVector(1.0f, 1.0f, 1.0f));
 }
 
 
