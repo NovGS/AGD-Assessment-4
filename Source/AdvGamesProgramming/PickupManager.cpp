@@ -30,10 +30,6 @@ void APickupManager::SpawnHealthPickup()
 	int32 RandomLocation = FMath::RandRange(0, PossibleSpawnLocations.Num() - 1);
 	AHealthPickup* HealthPickup = GetWorld()->SpawnActor<AHealthPickup>(HealthPickupClass, PossibleSpawnLocations[RandomLocation] + FVector(0.0f, 0.0f, 50.0f), FRotator::ZeroRotator);
 	HealthPickup->SetLifeSpan(HEALTH_PICKUP_LIFETIME);
-	if (GEngine)
-	{
-		GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Red, FString::Printf(TEXT("Health Pickup Spawned :)")));
-	}
 }
 
 void APickupManager::SpawnWeaponPickup()
@@ -41,10 +37,6 @@ void APickupManager::SpawnWeaponPickup()
 	int32 RandomLocation = FMath::RandRange(0, PossibleSpawnLocations.Num() - 1);
 	APickup* WeaponPickup = GetWorld()->SpawnActor<APickup>(WeaponPickupClass, PossibleSpawnLocations[RandomLocation] + FVector(0.0f,0.0f,50.0f), FRotator::ZeroRotator);
 	WeaponPickup->SetLifeSpan(WEAPON_PICKUP_LIFETIME);
-	if (GEngine)
-	{
-		GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Red, FString::Printf(TEXT("Pickup Spawned :)")));
-	}
 }
 
 // Called when the game starts or when spawned
@@ -52,12 +44,14 @@ void APickupManager::BeginPlay()
 {
 	Super::BeginPlay();
 	
+	// Spawns some weapons at the beginning of the game. 1 Weapon every 50 nodes on the map
 	for (int i = 0; i < (PossibleSpawnLocations.Num()/50); i++)
 	{
 		SpawnWeaponPickup();
 	}
 	GetWorldTimerManager().SetTimer(WeaponSpawnTimer, this, &APickupManager::SpawnWeaponPickup, WeaponSpawnInterval, true, 0.0f);
 
+	// Begins spawning health at 15s
 	GetWorldTimerManager().SetTimer(HealthSpawnTimer, this, &APickupManager::SpawnHealthPickup, HealthSpawnInterval, true, 15.0f);
 }
 
@@ -65,6 +59,5 @@ void APickupManager::BeginPlay()
 void APickupManager::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
 }
 

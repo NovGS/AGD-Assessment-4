@@ -69,19 +69,6 @@ void AMultiplayerGameMode::InitGame(const FString& MapName, const FString& Optio
 
 }
 
-void AMultiplayerGameMode::HandleStartingNewPlayer_Implementation(APlayerController* NewPlayer)
-{
-	UE_LOG(LogTemp, Warning, TEXT("In HandleStartingNewPlayer"));
-
-	APlayerCharacter* Character = Cast<APlayerCharacter>(NewPlayer->GetPawn());
-	if (Character)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Player Character Found"));
-	}
-}
-
-
-
 void AMultiplayerGameMode::Respawn(AController* Controller)
 {
 	if (Controller)
@@ -145,6 +132,10 @@ void AMultiplayerGameMode::TriggerRespawn(AController* Controller)
 	}
 }
 
+/* This allows more than 2 players as Player 1 will be Team 0, Player 2 will be Team 1
+Player 3 will be Team 0 and Player 4 will be Team 1*/
+
+// Cycles through PlayerIDs of 0 and 1
 int32 AMultiplayerGameMode::GetAndIncrementPlayerID()
 {
 	int32 OldPlayerID = PlayerID;

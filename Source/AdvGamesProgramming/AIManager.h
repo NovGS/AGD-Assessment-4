@@ -34,6 +34,7 @@ public:
 
 	TSubclassOf<AEnemyCharacter> EnemyCharacterClass;
 
+	// Arrays which hold the spawn points for the respective team
 	TArray<ANavigationNode*> BlueSpawn;
 	TArray<ANavigationNode*> RedSpawn;
 

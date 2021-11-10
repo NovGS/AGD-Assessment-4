@@ -25,6 +25,7 @@ AEnemyCharacter::AEnemyCharacter()
 	//Reduce it from 100 to 50, so AI can get closer to the pickup and collide with the Bounding box
 	PickupAccuracy = 50.0f;
 
+	// Retrieve Red and Blue materials for the AI Mesh material
 	static ConstructorHelpers::FObjectFinder<UMaterialInstance> MaterialInstanceBlueObject(TEXT("/Game/Assets/Mannequin/UE4_Mannequin/Materials/M_UE4Man_Body_Blue"));
 	BlueMaterial = MaterialInstanceBlueObject.Object;
 
@@ -37,6 +38,8 @@ void AEnemyCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
+	// Set AI Mesh material to be Blue or Red depending on their team ID
+	// This gets replicated in OnRep_SetMaterial()
 	switch (TeamId)
 	{
 	case 0:
@@ -144,8 +147,6 @@ void AEnemyCharacter::Tick(float DeltaTime)
 					CurrentAgentState = AgentState::RELOAD;
 					Path.Empty();
 				}
-
-
 			}
 
 			//In Evade State
@@ -262,9 +263,9 @@ void AEnemyCharacter::Tick(float DeltaTime)
 void AEnemyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
-
 }
 
+// Sets Material as replicated
 void AEnemyCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
@@ -280,7 +281,6 @@ void AEnemyCharacter::AgentPatrol()
 		{
 			Path = Manager->GeneratePath(CurrentNode, Manager->AllNodes[FMath::RandRange(0, Manager->AllNodes.Num() - 1)]);
 		}
-
 	}
 }
 
@@ -336,7 +336,6 @@ void AEnemyCharacter::AgentReload()
 	}
 }
 
-
 //AI will react to Enemy from opposite team.
 //e.g if AI is in the Blue Team, it will react to Red Team only
 void AEnemyCharacter::SensePlayer(AActor* ActorSensed, FAIStimulus Stimulus)
@@ -344,6 +343,7 @@ void AEnemyCharacter::SensePlayer(AActor* ActorSensed, FAIStimulus Stimulus)
 	//Cast to the IGenericTeamAgentInterface using ActorSensed (Player) as parameter
 		if (IGenericTeamAgentInterface* TeamAgentInterface = Cast<IGenericTeamAgentInterface>(ActorSensed))
 		{
+			// Sets EnemyID to be the opposite of the TeamID, 0 or 1
 			int32 EnemyId = (TeamId == 0) ? 1 : 0;
 
 	        //When sensed Player
@@ -351,7 +351,6 @@ void AEnemyCharacter::SensePlayer(AActor* ActorSensed, FAIStimulus Stimulus)
 			{
 				if (Stimulus.WasSuccessfullySensed())
 				{
-					//UE_LOG(LogTemp, Warning, TEXT("Player Detected"));
 					DetectedPlayer = ActorSensed;
 					bCanSeePlayer = true;
 				}
@@ -410,7 +409,6 @@ void AEnemyCharacter::SenseWeaponPickup(AActor* ActorSensed, FAIStimulus Stimulu
 
 void AEnemyCharacter::MoveAlongPath()
 {
-
 	if ((GetActorLocation() - CurrentNode->GetActorLocation()).IsNearlyZero(PathfindingNodeAccuracy) && Path.Num() > 0)
 	{
 		CurrentNode = Path.Pop();
@@ -421,6 +419,7 @@ void AEnemyCharacter::MoveAlongPath()
 	}
 }
 
+// Sets AI mesh material when Material variable is updated
 void AEnemyCharacter::OnRep_SetMaterial()
 {
 	USkeletalMeshComponent* SkeletalMesh = FindComponentByClass<USkeletalMeshComponent>();

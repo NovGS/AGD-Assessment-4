@@ -31,5 +31,4 @@ public:
 	void ShowHUD();
 	UFUNCTION(BlueprintCallable)
 	void SetAmmoText(int32 RoundsRemaining, int32 RoundsInMagazine);
-	
 };

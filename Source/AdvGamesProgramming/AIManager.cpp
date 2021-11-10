@@ -17,8 +17,6 @@ AAIManager::AAIManager()
 	PrimaryActorTick.bCanEverTick = true;
 
 	AllowedAngle = 0.4f;
-
-	UE_LOG(LogTemp, Warning, TEXT("Setting up AIManager"));
 }
 
 // Called when the game starts or when spawned
@@ -36,13 +34,8 @@ void AAIManager::Init(TSubclassOf<AEnemyCharacter> EnemyCharacterClassArg, int32
 
 	if (AllNodes.Num() == 0)
 	{
-		UE_LOG(LogTemp, Display, TEXT("POPULATING NODES"))
-			PopulateNodes();
+		PopulateNodes();
 	}
-	
-	UE_LOG(LogTemp, Warning, TEXT("Number of nodes: %i"), AllNodes.Num());
-	UE_LOG(LogTemp, Warning, TEXT("Num AI: %i"), NumAI);
-
 	CreateAgents();
 }
 
@@ -50,7 +43,6 @@ void AAIManager::Init(TSubclassOf<AEnemyCharacter> EnemyCharacterClassArg, int32
 void AAIManager::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-	
 }
 
 TArray<ANavigationNode*> AAIManager::GeneratePath(ANavigationNode* StartNode, ANavigationNode* EndNode)
@@ -138,16 +130,20 @@ void AAIManager::PopulateNodes()
 		AllNodes.Add(*It);
 	}
 }
-
+// Creates the required number of AI, spawning at the given spawn points
 void AAIManager::CreateAgents()
 {
-	UE_LOG(LogTemp, Warning, TEXT("Creating Enemies"));
-	
 	if (AllNodes.Num() > 0)
 	{
+		/* This loop was created like this in order to allow for situations where there are more AI required than spawn points available
+		This means the player can potentially spawn as many AI as they like without breaking the spawning system*/
+
+		// Tracks how many AI have been spawned
 		int32 BlueAISpawned = 0;
+		// Continues looping through available spawn points until the required number of AI have been spawned
 		while (BlueAISpawned < NumAI)
 		{
+			// Spawns AI at spawn points and sets their TeamID
 			for (int i = 0; i < BlueSpawn.Num(); i++)
 			{
 				if (BlueAISpawned == NumAI) { break; }
@@ -159,9 +155,12 @@ void AAIManager::CreateAgents()
 			}
 		}
 
+		// Tracks how many AI have been spawned
 		int32 RedAISpawned = 0;
+		// Continues looping through available spawn points until the required number of AI have been spawned
 		while (RedAISpawned < NumAI)
 		{
+			// Spawns AI at spawn points and sets their TeamID
 			for (int i = 0; i < BlueSpawn.Num(); i++)
 			{
 				if (RedAISpawned == NumAI) { break; }
