@@ -43,6 +43,7 @@ public:
 	UPROPERTY(EditAnywhere, meta=(UIMin="10.0", UIMax="1000.0", ClampMin="10.0", ClampMax="1000.0"))
 	float PathfindingNodeAccuracy;
 
+	//Similar to PathfindingNodeAccuracy, but for pickup
 	UPROPERTY(EditAnywhere, meta = (UIMin = "10.0", UIMax = "1000.0", ClampMin = "10.0", ClampMax = "1000.0"))
 	float PickupAccuracy;
 
@@ -53,18 +54,22 @@ public:
 
 	class UAIPerceptionComponent* PerceptionComponent;
 
+	//Detected Player include all Enemy from opposite team.
 	AActor* DetectedPlayer;
+	//bCanSeePlyaer include all Enemy from opposite team
 	bool bCanSeePlayer;
+
 	AActor* DetectedHealthPickup;
 	bool bCanSeeHealthPickup;
+
 	AActor* DetectedWeaponPickup;
 	bool bCanSeeWeaponPickup;
 
+	//True:  No bullet left
+	//False: Have bullet left 
 	UPROPERTY(BlueprintReadWrite)
 	bool bIsBulletEmpty;
 
-	FVector PlayerLocation;
-	float SprintMultiplier;
 
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
@@ -92,7 +97,7 @@ public:
 	UFUNCTION(BlueprintCallable, blueprintimplementableevent)
 	void Fire(FVector FireDirection);
 
-	//Set up team id for the AI
+	//Team Id for the AI
 	FGenericTeamId TeamId;
 
 private:

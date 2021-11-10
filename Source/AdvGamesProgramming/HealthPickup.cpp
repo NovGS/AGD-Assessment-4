@@ -9,6 +9,7 @@
 //Set Default values
 AHealthPickup::AHealthPickup()
 {
+	//Set TeamId to 2
 	TeamId = FGenericTeamId(2);
 
 	PickupBoundingBox->SetWorldScale3D(FVector(1.0f, 1.0f, 1.0f));
@@ -19,6 +20,7 @@ void AHealthPickup::OnPickup(AActor* ActorThatPickedUp)
 {
 	Super::OnPickup(ActorThatPickedUp);
 
+	//Destory the object and rest the health of ActorThatPickedUp to 100
 	UHealthComponent* Health = ActorThatPickedUp->FindComponentByClass<UHealthComponent>();
 	if (Health)
 	{

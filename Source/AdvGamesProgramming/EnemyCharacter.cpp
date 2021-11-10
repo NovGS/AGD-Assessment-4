@@ -21,8 +21,9 @@ AEnemyCharacter::AEnemyCharacter()
 
 	CurrentAgentState = AgentState::PATROL;
 	PathfindingNodeAccuracy = 100.0f;
+
+	//Reduce it from 100 to 50, so AI can get closer to the pickup and collide with the Bounding box
 	PickupAccuracy = 50.0f;
-	SprintMultiplier = 1.5f;
 
 	static ConstructorHelpers::FObjectFinder<UMaterialInstance> MaterialInstanceBlueObject(TEXT("/Game/Assets/Mannequin/UE4_Mannequin/Materials/M_UE4Man_Body_Blue"));
 	BlueMaterial = MaterialInstanceBlueObject.Object;
@@ -137,7 +138,7 @@ void AEnemyCharacter::Tick(float DeltaTime)
 					Path.Empty();
 				}
 
-				//if AI run out of bullet in the engage state,
+				//if AI run out of bullet in the engage state, Then Reload (Search for weapon pickup)
 				else if (bIsBulletEmpty)
 				{
 					CurrentAgentState = AgentState::RELOAD;
@@ -305,8 +306,11 @@ void AEnemyCharacter::AgentEvade()
 		ANavigationNode* FurthestNode = Manager->FindFurthestNode(DetectedPlayer->GetActorLocation());
 		Path = Manager->GeneratePath(CurrentNode, FurthestNode);
 	}
+
+
 }
 
+//In agent heal AI will go to the health pickup they find and obtain it
 void AEnemyCharacter::AgentHeal()
 {
 	if (DetectedHealthPickup && bCanSeeHealthPickup)
@@ -316,6 +320,8 @@ void AEnemyCharacter::AgentHeal()
 	}
 }
 
+//In agent reload, AI will be assign to a random path to find weapon pickup. Unlike AgentHeal where AI will assign path
+//to find health pickup in Patrol state.
 void AEnemyCharacter::AgentReload()
 {
 	if (!bCanSeeWeaponPickup)
@@ -331,8 +337,8 @@ void AEnemyCharacter::AgentReload()
 }
 
 
-//As the player's GenericTeamId is set to 1, which is considered as the enemy of AI.
-//Thus, the AI will react to the player.
+//AI will react to Enemy from opposite team.
+//e.g if AI is in the Blue Team, it will react to Red Team only
 void AEnemyCharacter::SensePlayer(AActor* ActorSensed, FAIStimulus Stimulus)
 {
 	//Cast to the IGenericTeamAgentInterface using ActorSensed (Player) as parameter
@@ -347,7 +353,6 @@ void AEnemyCharacter::SensePlayer(AActor* ActorSensed, FAIStimulus Stimulus)
 				{
 					//UE_LOG(LogTemp, Warning, TEXT("Player Detected"));
 					DetectedPlayer = ActorSensed;
-					PlayerLocation = ActorSensed->GetActorLocation();
 					bCanSeePlayer = true;
 				}
 				else
@@ -359,8 +364,7 @@ void AEnemyCharacter::SensePlayer(AActor* ActorSensed, FAIStimulus Stimulus)
 		}
 }
 
-//The health pickup's GenericTeamId is set to 2, which is the enemy of AI.
-//Thus, the AI will react to the health pickup, different to player
+//The health pickup's GenericTeamId is set to 2, and AI consider it as an Enemy, but it will react differently
 void AEnemyCharacter::SenseHealthPickup(AActor* ActorSensed, FAIStimulus Stimulus)
 {
 	if (IGenericTeamAgentInterface* TeamAgentInterface = Cast<IGenericTeamAgentInterface>(ActorSensed))
